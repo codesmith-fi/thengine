@@ -7,7 +7,12 @@ target_sources(thengine PRIVATE
 )
 
 # Export headers so the sandbox can #include them
-target_include_directories(thengine PUBLIC include)
-
+target_include_directories(thengine 
+    PUBLIC 
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    PRIVATE 
+        src  # Allows engine files to #include "core/InternalHelper.hpp"
+)
 # Link SDL3 to the engine
 target_link_libraries(thengine PRIVATE SDL3::SDL3)

@@ -13,12 +13,16 @@ project_root/
 	CLAUDE.md
 ├── build/                # All compiled binaries (bin/ and lib/)
 ├── engine/               # Core framework shared library (thengine)
-│   ├── include/          # Public headers
+│   ├── include/          
+│   ├──── thengine/       # public, externally usable header files
+│   ├────── Game.h       
 │   ├── src/              # Each sub-system in its own folder
-│   ├──── core/           # Core functionality
-│   ├──── primitives/     # Geometric primitives like Vector2d, Point2d, Color, ...
-│   ├──── gfx/            # Renderable objects and classes
-│   ├──── particles/      # Particle sub-system
+│   ├──── core/           # code (.cpp) and and internal headers (.h)
+│   ├────── Game.cpp      # Base game class
+│   ├────── ihelper.h     # internal subsystem specific header
+│   ├──── primitives/     # e.g. geometric primitives
+│   ├──── gfx/            # e.g. renderable objects
+│   ├──── particles/      # ...
 │   ├──── ... etc.
 │   └── doc/              # Technical specs for subsystems
 │   ├── CMakeLists.txt    # CMake build config for "thengine" library
@@ -27,6 +31,10 @@ project_root/
     └── assets/           # Shaders, textures, and data
 │   ├── CMakeLists.txt    # CMake build config for "thesandbox" application
 ```
+## Header Policy
+- **Public interfaces** go in include/thengine/. 
+- **Internal headers** and implementations go in src/[subsystem]/. 
+- Use folder "include/thengine/" for externally usable and sandbox-facing classes like Game.
 
 ## Core Design Principles (Follow Strictly)
 - **Programming Language** Modern C++17
