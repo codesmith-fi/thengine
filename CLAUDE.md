@@ -20,9 +20,6 @@ project_root/
 │   ├──── core/           # code (.cpp) and and internal headers (.h)
 │   ├────── Game.cpp      # Base game class
 │   ├────── ihelper.h     # internal subsystem specific header
-│   ├──── primitives/     # e.g. geometric primitives
-│   ├──── gfx/            # e.g. renderable objects
-│   ├──── particles/      # ...
 │   ├──── ... etc.
 │   └── doc/              # Technical specs for subsystems
 │   ├── CMakeLists.txt    # CMake build config for "thengine" library
@@ -47,6 +44,12 @@ project_root/
 - **Data Types**: Use standard containers (std::vector, std::unordered_map etc.)
 - **Variables**: Extensive use of const, noexcept and [[nodiscard]] where appropriate
 - **Interface/API**: Keep public API clean, minimal and well-documented
+
+## Interaction Rules (For LLM)
+- **File Integrity**: Never combine multiple files into one code block.
+- **No Meta-Talk**: Do not include tool-calling thoughts or "thinking" tags in the final code output.
+- **Specific Pathing**: Always state the file path clearly before the code block.
+- **Modern C++**: Use `thengine` namespace and `#pragma once`.
 
 ## Naming Conventions
 - **Classes / Types**: `PascalCase` (example: `Game`, `Renderer`)
