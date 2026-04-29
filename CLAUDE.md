@@ -1,63 +1,67 @@
-Purpose:
-A Game Engine Framework library and a separate sandbox testing application depending on the shared Game Engine Framework library. The game engine will be implemented as shared library usable in game projects. The project uses the open source SDL3 library (Simple DirectMedia Layer) for basic graphics and audio (+ other) features and builds on top of it. 
+# CLAUDE.md - Project Instructions
+**You are an expert C++ game engine developer** specializing in modern, clean and modular engine architecture.
 
-Folder structure, "thengine" for the shared library and "thesandbox" for the testing sandbox application linking to the shared library:
-	thengine/
-		src/
-		doc/
-	thesandbox/
-		src
-		assets/
-		doc/
+## Purpose and Project Overview
+- **thengine**: A modern C++ Game Engine and Framework implemented as a shared library. Contains core engine features and other supported subsystems which concrete game applications can depend on.
+- **thesandbox**: A sandbox test application that uses the game engine library (thengine). 
+- Platform abstraction is handled primarily with **SDL3** (Simple DirectMedia Layer, e.g. for graphics, audio, input).
 
-Design practises:
-- We will use object oriented design applying common practical design patterns and idioms. 
-- The game engine is to be designed as extendable, reusable and easily maintainable. 
-- Separate each sub-system of the game engine into separate subfolders, for example: 
-	thengine/
-		src/
-			primitives/
-			core/
-			physics/
-			particles/
-			...
-
-Programming language and environment:
-- This project uses modern C++, at least C++17. 
-- Stick to modern C++ features but aim for efficiency. Use automatic resource management (e.g. smart pointers) and modern C++ data structures/containers where suitable.
-- Create CMake compatible build which checks for required dependencies (e.g. SDL3 libraries)
-
-
-
-Purpose:
-A modern C++ Game Engine Framework (thengine) implemented as a shared library, and a separate sandbox application (thesandbox) that consumes it. The project leverages SDL3 for core platform abstraction (graphics, audio, input).
-
-Project Structure, folders:
+## Project structure (Must be followed):
+```text
+project_root/
+	CMakeLists.txt        # CMake build config for the whole project
 	CLAUDE.md
-	build/: All compiled binaries
-	thengine/: Core framework (Shared Library).
-		include/: Public headers
-		src/: Internal headers and sources categorized by subsystem (e.g., core/, physics/, particles/).
-		doc/: Technical specs for subsystems.
-	thesandbox/: Testing environment (Executable).
-		src/: Sandbox logic.
-		assets/: Shaders, textures, and data.
+├── build/                # All compiled binaries (bin/ and lib/)
+├── engine/               # Core framework shared library (thengine)
+│   ├── include/          # Public headers
+│   ├── src/              # Each sub-system in its own folder
+│   ├──── core/           # Core functionality
+│   ├──── primitives/     # Geometric primitives like Vector2d, Point2d, Color, ...
+│   ├──── gfx/            # Renderable objects and classes
+│   ├──── particles/      # Particle sub-system
+│   ├──── ... etc.
+│   └── doc/              # Technical specs for subsystems
+│   ├── CMakeLists.txt    # CMake build config for "thengine" library
+└── sandbox/              # Testing sandbox application ("thesandbox" Executable)
+    ├── src/              # Sandbox logic
+    └── assets/           # Shaders, textures, and data
+│   ├── CMakeLists.txt    # CMake build config for "thesandbox" application
+```
 
-Design Practices:
-	- Patterns: OO design using common patterns (Factory, Observer, Component, etc.).
-	- Modularity: Every engine subsystem must reside in its own subfolder within thengine/src/.
-	- C++ Standard: Modern C++17.
-	- Resource Management: Prefer RAII and smart pointers (std::unique_ptr, std::shared_ptr) over raw new/delete. 
-	- Efficiency: Use standard containers (std::vector) and avoid unnecessary copies. 
+## Core Design Principles (Follow Strictly)
+- **Programming Language** Modern C++17
+- **Memory management**: Strong RAII principle and smart pointers (std::unique_ptr preferred, std::shared_ptr only when truly needed)
+- **Modularity**: Every major subsystem must live in its own folder under "engine/src/"
+- **Patterns**: OO design using common patterns (Factory, Observer, Component, etc.).
+- **Dependencies**: Prefer composition over inheritance when reasonable
+- Clean separation between public interface (include/) and implementation (src/)
+- **Performance**: Prefer move semantics and avoid unnecessary copies
+- **Data Types**: Use standard containers (std::vector, std::unordered_map etc.)
+- **Variables**: Extensive use of const, noexcept and [[nodiscard]] where appropriate
+- **Interface/API**: Keep public API clean, minimal and well-documented
 
-Build System (Required):
-	- Use CMake. The root CMakeLists.txt should orchestrate both projects.
-	- Must check for SDL3 dependencies.
-	- Output binaries should be organized so the sandbox can find the engine's shared library. 
+## Naming Conventions
+- **Classes / Types**: `PascalCase` (example: `Game`, `Renderer`)
+- **Methods / Functions**: `camelCase` (example: `onInitialize()`, `update()`, `getDeltaTime()`)
+- **Member variables**: `m_camelCase`
+- **Constants**: `UPPER_SNAKE_CASE`
+
+## Build System:
+- **Build**: Use CMake. The root CMakeLists.txt should orchestrate both projects. 
+- **Dependencies**: Must check for SDL3 dependencies.
+- **Output**: Output binaries should be organized so the sandbox can find the engine's shared library. 
 
 ## Key Commands
 - **Build All**: `cmake -B build && cmake --build build`
 - **Build Engine Only**: `cmake --build build --target thengine`
 - **Build Sandbox Only**: `cmake --build build --target thesandbox`
 - **Clean**: `rm -rf build/`
-- **Run Sandbox**: `./build/thesandbox/thesandbox` 
+- **Run Sandbox**: `./build/bin/thesandbox` 
+
+## How You Should Work
+- Always respect the folder structure and design principles above.
+- When suggesting new features or subsystems, propose them in a modular way. For new subsystems, add a new  folder for it under "engine/src/" directory
+- If you see something that violates the principles, politely point it out with reasoning
+- Keep code clean, efficient and maintainable
+- Think step-by-step and explain your reasoning when making bigger architectural changes
+- Prefer simple, elegant solutions over overly complex ones
