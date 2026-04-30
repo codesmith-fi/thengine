@@ -5,6 +5,7 @@ add_library(thengine SHARED "")
 target_sources(thengine PRIVATE
     src/core/Game.cpp
     src/input/Input.cpp
+    src/graphics/Renderer.cpp
 )
 
 # Export headers so the sandbox can #include them

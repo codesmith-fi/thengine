@@ -8,6 +8,8 @@ struct SDL_Window;
 
 namespace thengine {
 
+class Renderer;
+
 struct SDLWindowDeleter {
     void operator()(SDL_Window* window) const;
 };
@@ -42,6 +44,8 @@ protected:
     virtual void onReleaseContent();
     virtual void onShutdown();
 
+    Renderer& getRenderer() { return *m_renderer; }
+
 private:
     std::string m_title;
     int m_width;
@@ -54,6 +58,7 @@ private:
     float m_realizedFPS;
 
     std::unique_ptr<SDL_Window, SDLWindowDeleter> m_window;
+    std::unique_ptr<Renderer> m_renderer;
 };
 
 } // namespace thengine

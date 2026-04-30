@@ -1,6 +1,7 @@
 #include "SandboxGame.h"
 #include "thengine/DebugLogger.h"
 #include "thengine/Input.h"
+#include "thengine/Renderer.h"
 
 SandboxGame::SandboxGame(const std::string& title, int width, int height)
     : thengine::Game(title, width, height),
@@ -37,6 +38,9 @@ void SandboxGame::onRender(float deltaTime) {
         LOG_INFO() << "SandboxGame rendering! First frame delta time: " << deltaTime;
         m_hasLoggedRender = true;
     }
+
+    getRenderer().clear(100, 149, 237, 255);
+    getRenderer().present();
 }
 
 void SandboxGame::onReleaseContent() {

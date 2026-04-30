@@ -1,4 +1,5 @@
 #include "thengine/Game.h"
+#include "thengine/Renderer.h"
 
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_events.h>
@@ -55,6 +56,8 @@ int Game::run() {
     LOG_ERROR() << "Failed to create SDL window: " << SDL_GetError();
     return -1;
   }
+
+  m_renderer = std::make_unique<Renderer>(m_window.get());
 
   onInitialize();
   onLoadContent();
