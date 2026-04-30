@@ -17,10 +17,12 @@ SandboxGame::~SandboxGame() = default;
 
 void SandboxGame::onInitialize() {
     LOG_INFO() << "SandboxGame initialized!";
+    m_content = std::make_unique<thengine::ContentManager>(getRenderer());
 }
 
 void SandboxGame::onLoadContent() {
     LOG_INFO() << "SandboxGame loading content!";
+    m_testTexture = m_content->load<thengine::Texture>("assets/test.png");
 }
 
 bool SandboxGame::onUpdate(float deltaTime) {

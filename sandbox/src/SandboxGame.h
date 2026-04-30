@@ -2,7 +2,10 @@
 
 #include "thengine/Game.h"
 #include "thengine/graphics/Sprite.h"
+#include "thengine/ContentManager.h"
+#include "thengine/graphics/Texture.h"
 #include <string>
+#include <memory>
 
 class SandboxGame : public thengine::Game {
 public:
@@ -21,4 +24,7 @@ private:
     bool m_hasLoggedUpdate;
     bool m_hasLoggedRender;
     thengine::Sprite m_player;
+    
+    std::unique_ptr<thengine::ContentManager> m_content;
+    std::shared_ptr<thengine::Texture> m_testTexture;
 };

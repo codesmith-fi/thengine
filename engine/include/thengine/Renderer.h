@@ -25,6 +25,8 @@ public:
     void clear(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
     void fillRect(const Vector2& pos, const Vector2& size, const Color& color);
     void present();
+    
+    SDL_Renderer* getRawRenderer() const { return m_renderer.get(); }
 
 private:
     std::unique_ptr<SDL_Renderer, void(*)(SDL_Renderer*)> m_renderer;
