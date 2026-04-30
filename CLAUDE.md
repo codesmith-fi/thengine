@@ -45,11 +45,24 @@ project_root/
 - **Variables**: Extensive use of const, noexcept and [[nodiscard]] where appropriate
 - **Interface/API**: Keep public API clean, minimal and well-documented
 
+## SDL3 Development Guidelines
+- **API Reference:** Always prioritize local header files in `sdl3_headers/SDL3/` over internal knowledge. SDL3 is a moving target and the headers are the "source of truth".
+- **Documentation Lookup:** When using any SDL3 function, if you are unsure of the signature or properties, read the corresponding `.h` file in `sdl3_headers/`.
+- **Key Headers:**
+  - Graphics/Rendering: `sdl3_headers/SDL_render.h`
+  - Window Management: `sdl3_headers/SDL_video.h`
+  - Events/Input: `sdl3_headers/SDL_events.h`
+  - Migration: Refer to `sdl3_headers/SDL_oldnames.h` to map SDL2 functions to SDL3.
+- **Coding Style:** 
+  - Use SDL3 property-based initialization where applicable.
+  - Follow the new SDL3 naming conventions (e.g., `SDL_RenderTexture` instead of `SDL_RenderCopy`).
+
 ## Interaction Rules (For LLM)
 - **File Integrity**: Never combine multiple files into one code block.
 - **No Meta-Talk**: Do not include tool-calling thoughts or "thinking" tags in the final code output.
 - **Specific Pathing**: Always state the file path clearly before the code block.
 - **Modern C++**: Use `thengine` namespace and `#pragma once`.
+- **Header/Source Sync**: When modifying a class, always verify that all members used in the .cpp are defined in the .hpp. Prefer full-file rewrites over partial edits if the file is under 100 lines.
 
 ## Naming Conventions
 - **Classes / Types**: `PascalCase` (example: `Game`, `Renderer`)

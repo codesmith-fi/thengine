@@ -28,12 +28,12 @@ public:
     MyGame();
     
 protected:
-    void OnInitialize() override;
-    void OnLoadContent() override;
-    void OnUpdate(float deltaTime) override;
-    void OnRender(float deltaTime) override;
+    void onInitialize() override;
+    void onLoadContent() override;
+    void onUpdate(float deltaTime) override;
+    void onRender(float deltaTime) override;
     // void onReleaseContent() override - not implemented here
-    void OnShutdown() override;
+    void onShutdown() override;
 };
 
 int main() {
