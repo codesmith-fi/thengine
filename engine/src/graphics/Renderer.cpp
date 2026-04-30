@@ -1,44 +1,51 @@
 #include "thengine/Renderer.h"
 #include "thengine/DebugLogger.h"
-#include <SDL3/SDL_render.h>
-#include <SDL3/SDL_error.h>
+#include <SDL3/SDL_gpu.h>
+#include <SDL3/SDL_video.h>
 
 namespace thengine {
 
 Renderer::Renderer(SDL_Window* window)
-    : m_renderer(nullptr, SDL_DestroyRenderer) {
+    : m_window(window), m_device(nullptr) {
     
-    SDL_Renderer* rawRenderer = SDL_CreateRenderer(window, nullptr);
-    if (!rawRenderer) {
-        LOG_ERROR() << "Failed to create SDL Renderer: " << SDL_GetError();
-    } else {
-        m_renderer.reset(rawRenderer);
-        const char* rendererName = SDL_GetRendererName(rawRenderer);
-        LOG_INFO() << "Renderer created: " << (rendererName ? rendererName : "Unknown");
+    m_device = SDL_CreateGPUDevice(
+        SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL | SDL_GPU_SHADERFORMAT_MSL,
+        true, // debug_mode
+        nullptr // name
+    );
+
+    if (!m_device) {
+        LOG_ERROR() << "Failed to create SDL_GPUDevice: " << SDL_GetError();
+        return;
+    }
+
+    if (!SDL_ClaimWindowForGPUDevice(m_device, m_window)) {
+        LOG_ERROR() << "Failed to claim window for GPU Device: " << SDL_GetError();
+        SDL_DestroyGPUDevice(m_device);
+        m_device = nullptr;
+        return;
+    }
+
+    LOG_INFO() << "SDL_GPUDevice initialized and window claimed successfully!";
+}
+
+Renderer::~Renderer() {
+    if (m_device) {
+        SDL_ReleaseWindowFromGPUDevice(m_device, m_window);
+        SDL_DestroyGPUDevice(m_device);
     }
 }
 
-Renderer::~Renderer() = default;
-
-void Renderer::clear(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-    if (m_renderer) {
-        SDL_SetRenderDrawColor(m_renderer.get(), r, g, b, a);
-        SDL_RenderClear(m_renderer.get());
-    }
+void Renderer::clear(uint8_t /*r*/, uint8_t /*g*/, uint8_t /*b*/, uint8_t /*a*/) {
+    // Stubbed pending GPU pipeline setup
 }
 
-void Renderer::fillRect(const Vector2& pos, const Vector2& size, const Color& color) {
-    if (m_renderer) {
-        SDL_SetRenderDrawColor(m_renderer.get(), color.r, color.g, color.b, color.a);
-        SDL_FRect rect{pos.x, pos.y, size.x, size.y};
-        SDL_RenderFillRect(m_renderer.get(), &rect);
-    }
+void Renderer::fillRect(const Vector2& /*pos*/, const Vector2& /*size*/, const Color& /*color*/) {
+    // Stubbed pending GPU pipeline setup
 }
 
 void Renderer::present() {
-    if (m_renderer) {
-        SDL_RenderPresent(m_renderer.get());
-    }
+    // Stubbed pending GPU pipeline setup
 }
 
 } // namespace thengine

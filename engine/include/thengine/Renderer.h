@@ -6,7 +6,7 @@
 #include "thengine/primitives/Color.h"
 
 // Forward declarations for SDL types
-struct SDL_Renderer;
+struct SDL_GPUDevice;
 struct SDL_Window;
 
 namespace thengine {
@@ -26,10 +26,11 @@ public:
     void fillRect(const Vector2& pos, const Vector2& size, const Color& color);
     void present();
     
-    SDL_Renderer* getRawRenderer() const { return m_renderer.get(); }
+    SDL_GPUDevice* getDevice() const { return m_device; }
 
 private:
-    std::unique_ptr<SDL_Renderer, void(*)(SDL_Renderer*)> m_renderer;
+    SDL_Window* m_window;
+    SDL_GPUDevice* m_device;
 };
 
 } // namespace thengine
