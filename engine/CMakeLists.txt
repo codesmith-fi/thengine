@@ -4,6 +4,7 @@ add_library(thengine SHARED "")
 # Define your subsystems folders
 target_sources(thengine PRIVATE
     src/core/Game.cpp
+    src/input/Input.cpp
 )
 
 # Export headers so the sandbox can #include them
@@ -15,4 +16,4 @@ target_include_directories(thengine
         src  # Allows engine files to #include "core/InternalHelper.hpp"
 )
 # Link SDL3 to the engine
-target_link_libraries(thengine PUBLIC SDL3::SDL3)
+target_link_libraries(thengine PRIVATE SDL3::SDL3)

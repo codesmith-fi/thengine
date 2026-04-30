@@ -1,7 +1,6 @@
 #include "SandboxGame.h"
 #include "thengine/DebugLogger.h"
-#include <SDL3/SDL_keyboard.h>
-#include <SDL3/SDL_scancode.h>
+#include "thengine/Input.h"
 
 SandboxGame::SandboxGame(const std::string& title, int width, int height)
     : thengine::Game(title, width, height),
@@ -25,8 +24,7 @@ bool SandboxGame::onUpdate(float deltaTime) {
         m_hasLoggedUpdate = true;
     }
 
-    const bool* state = SDL_GetKeyboardState(nullptr);
-    if (state[SDL_SCANCODE_ESCAPE]) {
+    if (thengine::Input::isKeyPressed(thengine::Key::Escape)) {
         LOG_INFO() << "ESCAPE pressed, exiting sandbox.";
         return false;
     }
