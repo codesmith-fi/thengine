@@ -4,8 +4,10 @@ add_library(thengine SHARED "")
 # Define your subsystems folders
 target_sources(thengine PRIVATE
     src/core/Game.cpp
+    src/core/Entity.cpp
     src/input/Input.cpp
     src/graphics/Renderer.cpp
+    src/graphics/Sprite.cpp
 )
 
 # Export headers so the sandbox can #include them

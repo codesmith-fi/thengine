@@ -7,6 +7,10 @@ SandboxGame::SandboxGame(const std::string& title, int width, int height)
     : thengine::Game(title, width, height),
       m_hasLoggedUpdate(false),
       m_hasLoggedRender(false) {
+      
+    m_player.m_position = thengine::Vector2(width / 2.0f, height / 2.0f);
+    m_player.m_scale = thengine::Vector2(50.0f, 50.0f);
+    m_player.m_color = thengine::Color(255, 0, 0, 255); // Red square
 }
 
 SandboxGame::~SandboxGame() = default;
@@ -30,6 +34,20 @@ bool SandboxGame::onUpdate(float deltaTime) {
         return false;
     }
 
+    float speed = 200.0f * deltaTime;
+    if (thengine::Input::isKeyPressed(thengine::Key::W)) {
+        m_player.m_position.y -= speed;
+    }
+    if (thengine::Input::isKeyPressed(thengine::Key::S)) {
+        m_player.m_position.y += speed;
+    }
+    if (thengine::Input::isKeyPressed(thengine::Key::A)) {
+        m_player.m_position.x -= speed;
+    }
+    if (thengine::Input::isKeyPressed(thengine::Key::D)) {
+        m_player.m_position.x += speed;
+    }
+
     return true;
 }
 
@@ -40,6 +58,7 @@ void SandboxGame::onRender(float deltaTime) {
     }
 
     getRenderer().clear(100, 149, 237, 255);
+    m_player.render(getRenderer());
     getRenderer().present();
 }
 

@@ -27,6 +27,14 @@ void Renderer::clear(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
     }
 }
 
+void Renderer::fillRect(const Vector2& pos, const Vector2& size, const Color& color) {
+    if (m_renderer) {
+        SDL_SetRenderDrawColor(m_renderer.get(), color.r, color.g, color.b, color.a);
+        SDL_FRect rect{pos.x, pos.y, size.x, size.y};
+        SDL_RenderFillRect(m_renderer.get(), &rect);
+    }
+}
+
 void Renderer::present() {
     if (m_renderer) {
         SDL_RenderPresent(m_renderer.get());

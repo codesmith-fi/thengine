@@ -1,6 +1,7 @@
 #pragma once
 
 #include "thengine/Game.h"
+#include "thengine/graphics/Sprite.h"
 #include <string>
 
 class SandboxGame : public thengine::Game {
@@ -19,4 +20,5 @@ protected:
 private:
     bool m_hasLoggedUpdate;
     bool m_hasLoggedRender;
+    thengine::Sprite m_player;
 };
