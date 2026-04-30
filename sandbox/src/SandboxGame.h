@@ -11,7 +11,7 @@ public:
 protected:
     void onInitialize() override;
     void onLoadContent() override;
-    void onUpdate(float deltaTime) override;
+    bool onUpdate(float deltaTime) override;
     void onRender(float deltaTime) override;
     void onReleaseContent() override;
     void onShutdown() override;

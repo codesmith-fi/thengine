@@ -41,7 +41,7 @@ void Game::setFramerateLimit(int fps) noexcept { m_fpsLimit = fps; }
 // Empty implementations for lifecycle hooks
 void Game::onInitialize() {}
 void Game::onLoadContent() {}
-void Game::onUpdate(float /*deltaTime*/) {}
+bool Game::onUpdate(float /*deltaTime*/) { return true; }
 void Game::onRender(float /*deltaTime*/) {}
 void Game::onReleaseContent() {}
 void Game::onShutdown() {}
@@ -79,7 +79,9 @@ int Game::run() {
       }
     }
 
-    onUpdate(dt);
+    if (!onUpdate(dt)) {
+      m_isRunning = false;
+    }
     onRender(dt);
 
     // Frame timing and limiting

@@ -37,7 +37,7 @@ public:
 protected:
     virtual void onInitialize();
     virtual void onLoadContent();
-    virtual void onUpdate(float deltaTime);
+    virtual bool onUpdate(float deltaTime);
     virtual void onRender(float deltaTime);
     virtual void onReleaseContent();
     virtual void onShutdown();

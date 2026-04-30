@@ -15,4 +15,4 @@ target_include_directories(thengine
         src  # Allows engine files to #include "core/InternalHelper.hpp"
 )
 # Link SDL3 to the engine
-target_link_libraries(thengine PRIVATE SDL3::SDL3)
+target_link_libraries(thengine PUBLIC SDL3::SDL3)
