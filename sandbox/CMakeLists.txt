@@ -1,5 +1,5 @@
 # Create the executable
-add_executable(thesandbox src/main.cpp)
+add_executable(thesandbox src/main.cpp src/SandboxGame.cpp)
 
 # Link to your custom engine
 target_link_libraries(thesandbox PRIVATE thengine)

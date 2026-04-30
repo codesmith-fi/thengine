@@ -6,6 +6,7 @@
 #include <SDL3/SDL_timer.h>
 #include <SDL3/SDL_video.h>
 #include <iostream>
+#include "thengine/DebugLogger.h"
 
 namespace thengine {
 
@@ -19,7 +20,7 @@ void SDLWindowDeleter::operator()(SDL_Window *window) const {
 struct SDLContext {
   SDLContext() {
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
-      std::cerr << "Failed to initialize SDL3: " << SDL_GetError() << "\n";
+      LOG_ERROR() << "Failed to initialize SDL3: " << SDL_GetError();
     }
   }
   ~SDLContext() { SDL_Quit(); }
@@ -51,7 +52,7 @@ int Game::run() {
 
   m_window.reset(SDL_CreateWindow(m_title.c_str(), m_width, m_height, 0));
   if (!m_window) {
-    std::cerr << "Failed to create SDL window: " << SDL_GetError() << "\n";
+    LOG_ERROR() << "Failed to create SDL window: " << SDL_GetError();
     return -1;
   }
 
