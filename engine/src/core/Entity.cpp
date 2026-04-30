@@ -8,4 +8,8 @@ Entity::~Entity() = default;
 
 void Entity::update(float /*dt*/) {}
 
+void Entity::move(const Vector2& velocity) {
+    m_position += velocity;
+}
+
 } // namespace thengine

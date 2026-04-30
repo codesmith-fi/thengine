@@ -34,19 +34,24 @@ bool SandboxGame::onUpdate(float deltaTime) {
         return false;
     }
 
-    float speed = 200.0f * deltaTime;
+    thengine::Vector2 direction(0.0f, 0.0f);
     if (thengine::Input::isKeyPressed(thengine::Key::W)) {
-        m_player.m_position.y -= speed;
+        direction.y -= 1.0f;
     }
     if (thengine::Input::isKeyPressed(thengine::Key::S)) {
-        m_player.m_position.y += speed;
+        direction.y += 1.0f;
     }
     if (thengine::Input::isKeyPressed(thengine::Key::A)) {
-        m_player.m_position.x -= speed;
+        direction.x -= 1.0f;
     }
     if (thengine::Input::isKeyPressed(thengine::Key::D)) {
-        m_player.m_position.x += speed;
+        direction.x += 1.0f;
     }
+
+    direction = direction.normalized();
+    float speed = 200.0f;
+    thengine::Vector2 velocity = direction * (speed * deltaTime);
+    m_player.move(velocity);
 
     return true;
 }
