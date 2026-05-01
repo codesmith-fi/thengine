@@ -70,6 +70,7 @@ project_root/
 - **Member variables**: `m_camelCase`
 - **Constants**: `UPPER_SNAKE_CASE`
 - **Indenting**: Use Tab to indent code
+- **Comments**: Use english language for commenting
 
 ## Build System:
 - **Build**: Use CMake. The root CMakeLists.txt should orchestrate both projects. 

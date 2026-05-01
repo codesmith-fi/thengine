@@ -37,9 +37,9 @@ void SandboxGame::onLoadContent() {
     LOG_INFO() << "Sprite " << i << " at (" << randomX << ", " << randomY
                << ")";
                
-    // Syvyys 0.0 (kauimpana) - 1.0 (lähimpänä)
+    // Depth 0.0 (furthest) - 1.0 (closest)
     float depth = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-    // Koko skaalautuu syvyyden mukaan (pienempi syvyys = pienempi koko)
+    // Scale is based on depth (smaller depth = smaller size)
     scale = 0.05f + (depth * 0.25f);
     
     m_sprites[i].setDepth(depth);
@@ -61,7 +61,7 @@ void SandboxGame::onLoadContent() {
     currentTex = (currentTex + 1) % 3;
   }
   
-  // Lajitellaan spritet syvyysjärjestykseen piirtoa varten (kauimmaiset ensin)
+  // Sort sprites by depth for correct draw order (furthest first)
   std::sort(m_sprites.begin(), m_sprites.end(), [](const thengine::Sprite& a, const thengine::Sprite& b) {
       return a.getDepth() < b.getDepth();
   });
