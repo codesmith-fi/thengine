@@ -55,6 +55,9 @@ bool SandboxGame::onUpdate(float deltaTime) {
   thengine::Vector2 velocity = direction * (speed * deltaTime);
   m_player.move(velocity);
 
+  // Rotate slowly over time
+  m_player.rotate(deltaTime * 2.0f);
+
   return true;
 }
 

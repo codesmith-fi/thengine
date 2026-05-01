@@ -15,8 +15,14 @@ public:
 
     void render(Renderer& renderer) override;
 
+    void setRotation(float angle) { m_rotation = angle; }
+    void rotate(float angle) { m_rotation += angle; }
+    void setOrigin(const Vector2& origin) { m_origin = origin; }
+
     Color m_color;
     std::shared_ptr<Texture> m_texture;
+    float m_rotation;
+    Vector2 m_origin;
 };
 
 } // namespace thengine

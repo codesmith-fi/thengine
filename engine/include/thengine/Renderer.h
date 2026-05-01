@@ -39,7 +39,7 @@ public:
     
     void clear(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
     void fillRect(const Vector2& pos, const Vector2& size, const Color& color);
-    void drawTexture(std::shared_ptr<Texture> texture, const Vector2& pos, const Vector2& scale = {1.0f, 1.0f}, const Color& tint = {255, 255, 255, 255});
+    void drawTexture(std::shared_ptr<Texture> texture, const Vector2& pos, const Vector2& scale = {1.0f, 1.0f}, float rotation = 0.0f, const Vector2& origin = {0.5f, 0.5f}, const Color& tint = {255, 255, 255, 255});
 
 private:
     explicit Renderer(SDL_Window* window);

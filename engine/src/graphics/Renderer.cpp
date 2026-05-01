@@ -15,8 +15,7 @@ struct Vertex {
 };
 
 struct PushConstants {
-    float posX, posY;
-    float sizeX, sizeY;
+    float transform[16];
     float r, g, b, a;
 };
 
@@ -267,7 +266,7 @@ void Renderer::fillRect(const Vector2& pos, const Vector2& size, const Color& co
     // Stubbed
 }
 
-void Renderer::drawTexture(std::shared_ptr<Texture> texture, const Vector2& pos, const Vector2& scale, const Color& tint) {
+void Renderer::drawTexture(std::shared_ptr<Texture> texture, const Vector2& pos, const Vector2& scale, float rotation, const Vector2& origin, const Color& tint) {
     if (!m_renderPass || !m_spritePipeline || !texture || !m_sampler) return;
     
     SDL_BindGPUGraphicsPipeline(m_renderPass, m_spritePipeline);
@@ -286,16 +285,41 @@ void Renderer::drawTexture(std::shared_ptr<Texture> texture, const Vector2& pos,
     SDL_BindGPUFragmentSamplers(m_renderPass, 0, &samplerBinding, 1);
 
     PushConstants pc = {};
-    pc.posX = pos.x;
-    pc.posY = pos.y;
-    pc.sizeX = static_cast<float>(texture->getWidth()) * scale.x;
-    pc.sizeY = static_cast<float>(texture->getHeight()) * scale.y;
+    float c = std::cos(rotation);
+    float s = std::sin(rotation);
+    float w = static_cast<float>(texture->getWidth()) * scale.x;
+    float h = static_cast<float>(texture->getHeight()) * scale.y;
+    float ox = origin.x * w;
+    float oy = origin.y * h;
+    float W_screen = 800.0f;
+    float H_screen = 600.0f;
+
+    pc.transform[0] = (2.0f / W_screen) * (w * c);
+    pc.transform[1] = (-2.0f / H_screen) * (w * s);
+    pc.transform[2] = 0.0f;
+    pc.transform[3] = 0.0f;
+
+    pc.transform[4] = (2.0f / W_screen) * (-h * s);
+    pc.transform[5] = (-2.0f / H_screen) * (h * c);
+    pc.transform[6] = 0.0f;
+    pc.transform[7] = 0.0f;
+
+    pc.transform[8] = 0.0f;
+    pc.transform[9] = 0.0f;
+    pc.transform[10] = 1.0f;
+    pc.transform[11] = 0.0f;
+
+    pc.transform[12] = (2.0f / W_screen) * (-ox * c + oy * s + pos.x) - 1.0f;
+    pc.transform[13] = (-2.0f / H_screen) * (-ox * s - oy * c + pos.y) + 1.0f;
+    pc.transform[14] = 0.0f;
+    pc.transform[15] = 1.0f;
+
     pc.r = tint.r / 255.0f;
     pc.g = tint.g / 255.0f;
     pc.b = tint.b / 255.0f;
     pc.a = tint.a / 255.0f;
 
-    LOG_INFO() << "Pushing uniforms: pos=" << pc.posX << "," << pc.posY << " size=" << pc.sizeX << "," << pc.sizeY;
+
 
     SDL_PushGPUVertexUniformData(m_cmdBuf, 0, &pc, sizeof(pc));
 
