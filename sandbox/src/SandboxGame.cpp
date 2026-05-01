@@ -9,7 +9,8 @@ SandboxGame::SandboxGame(const std::string &title, int width, int height)
 
   m_player.setPosition(thengine::Vector2(width / 2.0f, height / 2.0f));
   m_player.setScale(thengine::Vector2(0.1f, 0.1f));
-  m_player.setColor(thengine::Color(255, 255, 255, 255)); // White tint so texture is visible
+  m_player.setColor(
+      thengine::Color(255, 255, 255, 255)); // White tint so texture is visible
 }
 
 SandboxGame::~SandboxGame() = default;
@@ -20,8 +21,39 @@ void SandboxGame::onInitialize() {
 }
 
 void SandboxGame::onLoadContent() {
-  m_testTexture = m_content->load<thengine::Texture>("assets/cross.png");
-  m_player.setTexture(m_testTexture);
+  m_testTexture1 = m_content->load<thengine::Texture>("assets/test1.png");
+  m_testTexture2 = m_content->load<thengine::Texture>("assets/test2.png");
+  m_testTexture3 = m_content->load<thengine::Texture>("assets/test3.png");
+  m_playerTexture = m_content->load<thengine::Texture>("assets/player.png");
+
+  srand(time(NULL));
+
+  int currentTex = 0;
+  float scale = 0.1f;
+  for (int i = 0; i < MAX_SPRITES; i++) {
+    int randomX = rand() % WINDOW_WIDTH;
+    int randomY = rand() % WINDOW_HEIGHT;
+    LOG_INFO() << "Sprite " << i << " at (" << randomX << ", " << randomY
+               << ")";
+    scale = 0.1f + (rand() % 3) / 10.0f;
+    m_sprites[i].setPosition(thengine::Vector2(randomX, randomY));
+    m_sprites[i].setScale(thengine::Vector2(scale, scale));
+    m_sprites[i].setColor(thengine::Color(
+        255, 255, 255, 255)); // White tint so texture is visible
+    switch (currentTex) {
+    case 0:
+      m_sprites[i].setTexture(m_testTexture1);
+      break;
+    case 1:
+      m_sprites[i].setTexture(m_testTexture2);
+      break;
+    case 2:
+      m_sprites[i].setTexture(m_testTexture3);
+      break;
+    }
+    currentTex = (currentTex + 1) % 3;
+  }
+  m_player.setTexture(m_playerTexture);
 }
 
 bool SandboxGame::onUpdate(float deltaTime) {
@@ -68,6 +100,10 @@ void SandboxGame::onRender(float deltaTime) {
   }
 
   getRenderer().clear(100, 149, 237, 255);
+
+  for (int i = 0; i < MAX_SPRITES; i++) {
+    m_sprites[i].render(getRenderer());
+  }
   m_player.render(getRenderer());
 }
 
