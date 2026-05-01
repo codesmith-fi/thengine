@@ -271,7 +271,12 @@ void Renderer::drawTexture(std::shared_ptr<Texture> texture, const Vector2& pos,
     
     SDL_BindGPUGraphicsPipeline(m_renderPass, m_spritePipeline);
     
-    SDL_GPUViewport viewport = {0.0f, 0.0f, 800.0f, 600.0f, 0.0f, 1.0f};
+    int window_w, window_h;
+    SDL_GetWindowSizeInPixels(m_window, &window_w, &window_h);
+    float W_screen = static_cast<float>(window_w);
+    float H_screen = static_cast<float>(window_h);
+
+    SDL_GPUViewport viewport = {0.0f, 0.0f, W_screen, H_screen, 0.0f, 1.0f};
     SDL_SetGPUViewport(m_renderPass, &viewport);
     
     SDL_GPUBufferBinding vertexBinding = {};
@@ -291,8 +296,6 @@ void Renderer::drawTexture(std::shared_ptr<Texture> texture, const Vector2& pos,
     float h = static_cast<float>(texture->getHeight()) * scale.y;
     float ox = origin.x * w;
     float oy = origin.y * h;
-    float W_screen = 800.0f;
-    float H_screen = 600.0f;
 
     pc.transform[0] = (2.0f / W_screen) * (w * c);
     pc.transform[1] = (-2.0f / H_screen) * (w * s);

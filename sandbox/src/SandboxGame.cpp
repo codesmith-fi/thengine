@@ -2,6 +2,7 @@
 #include "thengine/DebugLogger.h"
 #include "thengine/Input.h"
 #include "thengine/Renderer.h"
+#include <algorithm>
 
 SandboxGame::SandboxGame(const std::string &title, int width, int height)
     : thengine::Game(title, width, height), m_hasLoggedUpdate(false),
@@ -35,7 +36,13 @@ void SandboxGame::onLoadContent() {
     int randomY = rand() % WINDOW_HEIGHT;
     LOG_INFO() << "Sprite " << i << " at (" << randomX << ", " << randomY
                << ")";
-    scale = 0.1f + (rand() % 3) / 10.0f;
+               
+    // Syvyys 0.0 (kauimpana) - 1.0 (lähimpänä)
+    float depth = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+    // Koko skaalautuu syvyyden mukaan (pienempi syvyys = pienempi koko)
+    scale = 0.05f + (depth * 0.25f);
+    
+    m_sprites[i].setDepth(depth);
     m_sprites[i].setPosition(thengine::Vector2(randomX, randomY));
     m_sprites[i].setScale(thengine::Vector2(scale, scale));
     m_sprites[i].setColor(thengine::Color(
@@ -53,6 +60,12 @@ void SandboxGame::onLoadContent() {
     }
     currentTex = (currentTex + 1) % 3;
   }
+  
+  // Lajitellaan spritet syvyysjärjestykseen piirtoa varten (kauimmaiset ensin)
+  std::sort(m_sprites.begin(), m_sprites.end(), [](const thengine::Sprite& a, const thengine::Sprite& b) {
+      return a.getDepth() < b.getDepth();
+  });
+  
   m_player.setTexture(m_playerTexture);
 }
 
