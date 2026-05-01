@@ -52,8 +52,7 @@ void Game::onReleaseContent() {}
 void Game::onShutdown() {}
 
 int Game::run() {
-  // RAII SDL init/quit
-  SDLContext sdlContext;
+  m_sdlContext = std::make_unique<SDLContext>();
 
   m_windowContext = std::make_unique<WindowContext>();
   m_windowContext->window = SDL_CreateWindow(m_title.c_str(), m_width, m_height, 0);
@@ -91,7 +90,10 @@ int Game::run() {
     if (!onUpdate(dt)) {
       m_isRunning = false;
     }
-    onRender(dt);
+    if (m_renderer->beginFrame()) {
+      onRender(dt);
+      m_renderer->endFrame();
+    }
 
     // Frame timing and limiting
     frameCount++;

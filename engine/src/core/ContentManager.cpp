@@ -109,10 +109,13 @@ std::shared_ptr<Texture> ContentManager::load<Texture>(const std::string& path) 
     SDL_EndGPUCopyPass(copyPass);
     SDL_SubmitGPUCommandBuffer(cmdBuf);
 
+    int width = surface->w;
+    int height = surface->h;
+
     SDL_ReleaseGPUTransferBuffer(device, transferBuffer);
     SDL_DestroySurface(surface);
 
-    return std::shared_ptr<Texture>(new Texture(device, texture, surface->w, surface->h, path));
+    return std::shared_ptr<Texture>(new Texture(device, texture, width, height, path));
 }
 
 } // namespace thengine

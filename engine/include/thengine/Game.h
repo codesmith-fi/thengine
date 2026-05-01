@@ -7,6 +7,7 @@ namespace thengine {
 
 class Renderer;
 struct WindowContext;
+struct SDLContext;
 
 class Game {
 public:
@@ -51,6 +52,7 @@ private:
     float m_totalGameTime;
     float m_realizedFPS;
 
+    std::unique_ptr<SDLContext> m_sdlContext;
     std::unique_ptr<WindowContext> m_windowContext;
     std::unique_ptr<Renderer> m_renderer;
 };

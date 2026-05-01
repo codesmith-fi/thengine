@@ -46,6 +46,7 @@ project_root/
 - **Interface/API**: Keep public API clean, minimal and well-documented
 
 ## SDL3 Development Guidelines
+- Never expose **SDL3** from thengine. Wrap SDL3 types in your own types. For example, don't have a class that returns a raw `SDL_GPUTexture` pointer. Return a `Texture` object or a wrapper.
 - **API Reference:** Always prioritize local header files in `sdl3_headers/SDL3/` over internal knowledge, if the folder exists. SDL3 headers can also be found in /usr/local/include/SDL3. SDL3 is a moving target and the headers are the "source of truth".
 - **Documentation Lookup:** When using any SDL3 function, if you are unsure of the signature or properties, read the corresponding `.h` file.
 - **Key Headers:**
