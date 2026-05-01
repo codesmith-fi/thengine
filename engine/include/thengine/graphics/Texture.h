@@ -1,13 +1,17 @@
 #pragma once
 
+#include <string>
+
 struct SDL_GPUDevice;
 struct SDL_GPUTexture;
 
 namespace thengine {
 
 class Texture {
+    friend class Renderer;
+    friend class ContentManager;
+
 public:
-    explicit Texture(SDL_GPUDevice* device, SDL_GPUTexture* texture);
     ~Texture();
 
     Texture(const Texture&) = delete;
@@ -15,11 +19,18 @@ public:
     Texture(Texture&&) = delete;
     Texture& operator=(Texture&&) = delete;
 
-    SDL_GPUTexture* getRaw() const { return m_texture; }
+    [[nodiscard]] int getWidth() const noexcept { return m_width; }
+    [[nodiscard]] int getHeight() const noexcept { return m_height; }
+    [[nodiscard]] const std::string& getPath() const noexcept { return m_path; }
 
 private:
+    explicit Texture(SDL_GPUDevice* device, SDL_GPUTexture* texture, int width, int height, const std::string& path);
+
     SDL_GPUDevice* m_device;
     SDL_GPUTexture* m_texture;
+    int m_width;
+    int m_height;
+    std::string m_path;
 };
 
 } // namespace thengine

@@ -6,8 +6,10 @@ struct SDL_GPUShader;
 namespace thengine {
 
 class Shader {
+    friend class Renderer;
+    friend class ContentManager;
+
 public:
-    explicit Shader(SDL_GPUDevice* device, SDL_GPUShader* shader);
     ~Shader();
 
     Shader(const Shader&) = delete;
@@ -15,9 +17,9 @@ public:
     Shader(Shader&&) = delete;
     Shader& operator=(Shader&&) = delete;
 
-    SDL_GPUShader* getRaw() const { return m_shader; }
-
 private:
+    explicit Shader(SDL_GPUDevice* device, SDL_GPUShader* shader);
+
     SDL_GPUDevice* m_device;
     SDL_GPUShader* m_shader;
 };

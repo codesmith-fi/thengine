@@ -46,13 +46,12 @@ project_root/
 - **Interface/API**: Keep public API clean, minimal and well-documented
 
 ## SDL3 Development Guidelines
-- **API Reference:** Always prioritize local header files in `sdl3_headers/SDL3/` over internal knowledge. SDL3 is a moving target and the headers are the "source of truth".
-- **Documentation Lookup:** When using any SDL3 function, if you are unsure of the signature or properties, read the corresponding `.h` file in `sdl3_headers/`.
+- **API Reference:** Always prioritize local header files in `sdl3_headers/SDL3/` over internal knowledge, if the folder exists. SDL3 headers can also be found in /usr/local/include/SDL3. SDL3 is a moving target and the headers are the "source of truth".
+- **Documentation Lookup:** When using any SDL3 function, if you are unsure of the signature or properties, read the corresponding `.h` file.
 - **Key Headers:**
-  - Graphics/Rendering: `sdl3_headers/SDL_render.h`
-  - Window Management: `sdl3_headers/SDL_video.h`
-  - Events/Input: `sdl3_headers/SDL_events.h`
-  - Migration: Refer to `sdl3_headers/SDL_oldnames.h` to map SDL2 functions to SDL3.
+  - Graphics/Rendering: `SDL_render.h`
+  - Window Management: `SDL_video.h`
+  - Events/Input: `SDL_events.h`
 - **Coding Style:** 
   - Use SDL3 property-based initialization where applicable.
   - Follow the new SDL3 naming conventions (e.g., `SDL_RenderTexture` instead of `SDL_RenderCopy`).

@@ -3,16 +3,10 @@
 #include <string>
 #include <memory>
 
-// Forward declarations for SDL types
-struct SDL_Window;
-
 namespace thengine {
 
 class Renderer;
-
-struct SDLWindowDeleter {
-    void operator()(SDL_Window* window) const;
-};
+struct WindowContext;
 
 class Game {
 public:
@@ -57,7 +51,7 @@ private:
     float m_totalGameTime;
     float m_realizedFPS;
 
-    std::unique_ptr<SDL_Window, SDLWindowDeleter> m_window;
+    std::unique_ptr<WindowContext> m_windowContext;
     std::unique_ptr<Renderer> m_renderer;
 };
 

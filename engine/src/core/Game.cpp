@@ -11,11 +11,15 @@
 
 namespace thengine {
 
-void SDLWindowDeleter::operator()(SDL_Window *window) const {
-  if (window) {
-    SDL_DestroyWindow(window);
-  }
-}
+struct WindowContext {
+    SDL_Window* window = nullptr;
+
+    ~WindowContext() {
+        if (window) {
+            SDL_DestroyWindow(window);
+        }
+    }
+};
 
 // Internal RAII helper for SDL subsystems
 struct SDLContext {
@@ -51,13 +55,15 @@ int Game::run() {
   // RAII SDL init/quit
   SDLContext sdlContext;
 
-  m_window.reset(SDL_CreateWindow(m_title.c_str(), m_width, m_height, 0));
-  if (!m_window) {
+  m_windowContext = std::make_unique<WindowContext>();
+  m_windowContext->window = SDL_CreateWindow(m_title.c_str(), m_width, m_height, 0);
+  if (!m_windowContext->window) {
     LOG_ERROR() << "Failed to create SDL window: " << SDL_GetError();
     return -1;
   }
 
-  m_renderer = std::make_unique<Renderer>(m_window.get());
+  // Use the Renderer private constructor
+  m_renderer = std::unique_ptr<Renderer>(new Renderer(m_windowContext->window));
 
   onInitialize();
   onLoadContent();
