@@ -7,10 +7,9 @@ SandboxGame::SandboxGame(const std::string &title, int width, int height)
     : thengine::Game(title, width, height), m_hasLoggedUpdate(false),
       m_hasLoggedRender(false) {
 
-  m_player.m_position = thengine::Vector2(width / 2.0f, height / 2.0f);
-  m_player.m_scale = thengine::Vector2(0.1f, 0.1f);
-  m_player.m_color =
-      thengine::Color(255, 255, 255, 255); // White tint so texture is visible
+  m_player.setPosition(thengine::Vector2(width / 2.0f, height / 2.0f));
+  m_player.setScale(thengine::Vector2(0.1f, 0.1f));
+  m_player.setColor(thengine::Color(255, 255, 255, 255)); // White tint so texture is visible
 }
 
 SandboxGame::~SandboxGame() = default;
@@ -22,7 +21,7 @@ void SandboxGame::onInitialize() {
 
 void SandboxGame::onLoadContent() {
   m_testTexture = m_content->load<thengine::Texture>("assets/cross.png");
-  m_player.m_texture = m_testTexture;
+  m_player.setTexture(m_testTexture);
 }
 
 bool SandboxGame::onUpdate(float deltaTime) {
