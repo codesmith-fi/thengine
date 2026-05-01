@@ -4,6 +4,7 @@
 #include "thengine/Game.h"
 #include "thengine/graphics/Sprite.h"
 #include "thengine/graphics/Texture.h"
+#include "thengine/graphics/SpriteBatch.h"
 #include <array>
 #include <memory>
 #include <string>
@@ -31,6 +32,7 @@ private:
   thengine::Sprite m_player;
   std::array<thengine::Sprite, MAX_SPRITES> m_sprites;
 
+  std::unique_ptr<thengine::SpriteBatch> m_spriteBatch;
   std::unique_ptr<thengine::ContentManager> m_content;
   std::shared_ptr<thengine::Texture> m_testTexture1;
   std::shared_ptr<thengine::Texture> m_testTexture2;

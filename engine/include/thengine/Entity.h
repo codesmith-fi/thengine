@@ -4,7 +4,7 @@
 
 namespace thengine {
 
-class Renderer;
+class SpriteBatch;
 
 class Entity {
 public:
@@ -12,7 +12,7 @@ public:
     virtual ~Entity();
 
     virtual void update(float dt);
-    virtual void render(Renderer& renderer) = 0;
+    virtual void render(SpriteBatch& batch) = 0;
     
     void move(const Vector2& velocity);
 

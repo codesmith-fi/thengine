@@ -1,4 +1,5 @@
 #include "thengine/Entity.h"
+#include "thengine/graphics/SpriteBatch.h"
 
 namespace thengine {
 

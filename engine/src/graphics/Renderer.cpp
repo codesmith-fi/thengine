@@ -8,11 +8,7 @@
 
 namespace thengine {
 
-struct Vertex {
-    float x, y;
-    float u, v;
-    float r, g, b, a;
-};
+#include "thengine/graphics/Vertex.h"
 
 struct PushConstants {
     float transform[16];
@@ -120,7 +116,7 @@ void Renderer::initPipeline() {
     pipelineInfo.vertex_input_state.vertex_attributes = vertexAttributes;
     pipelineInfo.vertex_input_state.num_vertex_attributes = 3;
 
-    pipelineInfo.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLESTRIP;
+    pipelineInfo.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
 
     pipelineInfo.rasterizer_state.cull_mode = SDL_GPU_CULLMODE_NONE;
     pipelineInfo.rasterizer_state.fill_mode = SDL_GPU_FILLMODE_FILL;
@@ -266,67 +262,107 @@ void Renderer::fillRect(const Vector2& pos, const Vector2& size, const Color& co
     // Stubbed
 }
 
-void Renderer::drawTexture(std::shared_ptr<Texture> texture, const Vector2& pos, const Vector2& scale, float rotation, const Vector2& origin, const Color& tint) {
-    if (!m_renderPass || !m_spritePipeline || !texture || !m_sampler) return;
+void Renderer::drawBatched(std::shared_ptr<Texture> texture, const Vertex* vertices, size_t vertexCount) {
+    if (!m_cmdBuf || !texture || vertexCount == 0) return;
+
+    if (m_renderPass) {
+        SDL_EndGPURenderPass(m_renderPass);
+        m_renderPass = nullptr;
+    }
+
+    // 1. Upload dynamic vertex data using a transfer buffer
+    SDL_GPUTransferBufferCreateInfo tbInfo = {};
+    tbInfo.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+    tbInfo.size = vertexCount * sizeof(Vertex);
+    SDL_GPUTransferBuffer* tb = SDL_CreateGPUTransferBuffer(m_device, &tbInfo);
     
-    SDL_BindGPUGraphicsPipeline(m_renderPass, m_spritePipeline);
-    
-    int window_w, window_h;
-    SDL_GetWindowSizeInPixels(m_window, &window_w, &window_h);
-    float W_screen = static_cast<float>(window_w);
-    float H_screen = static_cast<float>(window_h);
-
-    SDL_GPUViewport viewport = {0.0f, 0.0f, W_screen, H_screen, 0.0f, 1.0f};
-    SDL_SetGPUViewport(m_renderPass, &viewport);
-    
-    SDL_GPUBufferBinding vertexBinding = {};
-    vertexBinding.buffer = m_vertexBuffer;
-    vertexBinding.offset = 0;
-    SDL_BindGPUVertexBuffers(m_renderPass, 0, &vertexBinding, 1);
-    
-    SDL_GPUTextureSamplerBinding samplerBinding = {};
-    samplerBinding.texture = texture->m_texture;
-    samplerBinding.sampler = m_sampler;
-    SDL_BindGPUFragmentSamplers(m_renderPass, 0, &samplerBinding, 1);
-
-    PushConstants pc = {};
-    float c = std::cos(rotation);
-    float s = std::sin(rotation);
-    float w = static_cast<float>(texture->getWidth()) * scale.x;
-    float h = static_cast<float>(texture->getHeight()) * scale.y;
-    float ox = origin.x * w;
-    float oy = origin.y * h;
-
-    pc.transform[0] = (2.0f / W_screen) * (w * c);
-    pc.transform[1] = (-2.0f / H_screen) * (w * s);
-    pc.transform[2] = 0.0f;
-    pc.transform[3] = 0.0f;
-
-    pc.transform[4] = (2.0f / W_screen) * (-h * s);
-    pc.transform[5] = (-2.0f / H_screen) * (h * c);
-    pc.transform[6] = 0.0f;
-    pc.transform[7] = 0.0f;
-
-    pc.transform[8] = 0.0f;
-    pc.transform[9] = 0.0f;
-    pc.transform[10] = 1.0f;
-    pc.transform[11] = 0.0f;
-
-    pc.transform[12] = (2.0f / W_screen) * (-ox * c + oy * s + pos.x) - 1.0f;
-    pc.transform[13] = (-2.0f / H_screen) * (-ox * s - oy * c + pos.y) + 1.0f;
-    pc.transform[14] = 0.0f;
-    pc.transform[15] = 1.0f;
-
-    pc.r = tint.r / 255.0f;
-    pc.g = tint.g / 255.0f;
-    pc.b = tint.b / 255.0f;
-    pc.a = tint.a / 255.0f;
-
-
-
-    SDL_PushGPUVertexUniformData(m_cmdBuf, 0, &pc, sizeof(pc));
-
-    SDL_DrawGPUPrimitives(m_renderPass, 4, 1, 0, 0);
+    void* map = SDL_MapGPUTransferBuffer(m_device, tb, false);
+    if (map) {
+        std::memcpy(map, vertices, vertexCount * sizeof(Vertex));
+        SDL_UnmapGPUTransferBuffer(m_device, tb);
+        
+        SDL_GPUCopyPass* copy = SDL_BeginGPUCopyPass(m_cmdBuf);
+        SDL_GPUTransferBufferLocation srcLoc = {};
+        srcLoc.transfer_buffer = tb;
+        srcLoc.offset = 0;
+        
+        SDL_GPUBufferCreateInfo vInfo = {};
+        vInfo.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
+        vInfo.size = vertexCount * sizeof(Vertex);
+        SDL_GPUBuffer* vBuf = SDL_CreateGPUBuffer(m_device, &vInfo);
+        
+        SDL_GPUBufferRegion dstReg = {};
+        dstReg.buffer = vBuf;
+        dstReg.offset = 0;
+        dstReg.size = vertexCount * sizeof(Vertex);
+        
+        SDL_UploadToGPUBuffer(copy, &srcLoc, &dstReg, false);
+        SDL_EndGPUCopyPass(copy);
+        
+        // 2. Resume RenderPass with LOADOP_LOAD so we don't clear the screen
+        SDL_GPUColorTargetInfo colorTarget = {};
+        colorTarget.texture = m_swapchainTexture;
+        colorTarget.load_op = SDL_GPU_LOADOP_LOAD; 
+        colorTarget.store_op = SDL_GPU_STOREOP_STORE;
+        m_renderPass = SDL_BeginGPURenderPass(m_cmdBuf, &colorTarget, 1, nullptr);
+        
+        // 3. Bindings
+        SDL_BindGPUGraphicsPipeline(m_renderPass, m_spritePipeline);
+        
+        int window_w, window_h;
+        SDL_GetWindowSizeInPixels(m_window, &window_w, &window_h);
+        float W_screen = static_cast<float>(window_w);
+        float H_screen = static_cast<float>(window_h);
+        
+        SDL_GPUViewport viewport = {0.0f, 0.0f, W_screen, H_screen, 0.0f, 1.0f};
+        SDL_SetGPUViewport(m_renderPass, &viewport);
+        
+        SDL_GPUBufferBinding vertexBinding = {};
+        vertexBinding.buffer = vBuf;
+        vertexBinding.offset = 0;
+        SDL_BindGPUVertexBuffers(m_renderPass, 0, &vertexBinding, 1);
+        
+        SDL_GPUTextureSamplerBinding samplerBinding = {};
+        samplerBinding.texture = texture->m_texture;
+        samplerBinding.sampler = m_sampler;
+        SDL_BindGPUFragmentSamplers(m_renderPass, 0, &samplerBinding, 1);
+        
+        // 4. Push constants for Orthographic Projection
+        PushConstants pc = {};
+        pc.transform[0] = 2.0f / W_screen;
+        pc.transform[1] = 0.0f;
+        pc.transform[2] = 0.0f;
+        pc.transform[3] = 0.0f;
+        
+        pc.transform[4] = 0.0f;
+        pc.transform[5] = -2.0f / H_screen;
+        pc.transform[6] = 0.0f;
+        pc.transform[7] = 0.0f;
+        
+        pc.transform[8] = 0.0f;
+        pc.transform[9] = 0.0f;
+        pc.transform[10] = 1.0f;
+        pc.transform[11] = 0.0f;
+        
+        pc.transform[12] = -1.0f;
+        pc.transform[13] = 1.0f;
+        pc.transform[14] = 0.0f;
+        pc.transform[15] = 1.0f;
+        
+        pc.r = 1.0f;
+        pc.g = 1.0f;
+        pc.b = 1.0f;
+        pc.a = 1.0f;
+        
+        SDL_PushGPUVertexUniformData(m_cmdBuf, 0, &pc, sizeof(pc));
+        
+        // 5. Draw the entire batch
+        SDL_DrawGPUPrimitives(m_renderPass, vertexCount, 1, 0, 0);
+        
+        // 6. Release temporary buffers (SDL_GPU handles deferred destruction safely)
+        SDL_ReleaseGPUBuffer(m_device, vBuf);
+        SDL_ReleaseGPUTransferBuffer(m_device, tb);
+    }
 }
 
 } // namespace thengine

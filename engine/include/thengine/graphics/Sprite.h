@@ -13,7 +13,7 @@ public:
     Sprite();
     ~Sprite() override;
 
-    void render(Renderer& renderer) override;
+    void render(SpriteBatch& batch) override;
 
     void setOrigin(const Vector2& origin) { m_origin = origin; }
     [[nodiscard]] const Vector2& getOrigin() const { return m_origin; }

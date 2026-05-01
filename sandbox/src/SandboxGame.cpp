@@ -10,6 +10,7 @@ SandboxGame::SandboxGame(const std::string &title, int width, int height)
 
   m_player.setPosition(thengine::Vector2(width / 2.0f, height / 2.0f));
   m_player.setScale(thengine::Vector2(0.1f, 0.1f));
+  m_player.setDepth(2.0f); // Set depth high so it is drawn last (on top)
   m_player.setColor(
       thengine::Color(255, 255, 255, 255)); // White tint so texture is visible
 }
@@ -19,6 +20,7 @@ SandboxGame::~SandboxGame() = default;
 void SandboxGame::onInitialize() {
   LOG_INFO() << "SandboxGame initialized!";
   m_content = std::make_unique<thengine::ContentManager>(getRenderer());
+  m_spriteBatch = std::make_unique<thengine::SpriteBatch>(getRenderer());
 }
 
 void SandboxGame::onLoadContent() {
@@ -60,11 +62,6 @@ void SandboxGame::onLoadContent() {
     }
     currentTex = (currentTex + 1) % 3;
   }
-  
-  // Sort sprites by depth for correct draw order (furthest first)
-  std::sort(m_sprites.begin(), m_sprites.end(), [](const thengine::Sprite& a, const thengine::Sprite& b) {
-      return a.getDepth() < b.getDepth();
-  });
   
   m_player.setTexture(m_playerTexture);
 }
@@ -114,10 +111,14 @@ void SandboxGame::onRender(float deltaTime) {
 
   getRenderer().clear(100, 149, 237, 255);
 
+  m_spriteBatch->begin();
+
   for (int i = 0; i < MAX_SPRITES; i++) {
-    m_sprites[i].render(getRenderer());
+    m_sprites[i].render(*m_spriteBatch);
   }
-  m_player.render(getRenderer());
+  m_player.render(*m_spriteBatch);
+
+  m_spriteBatch->end();
 }
 
 void SandboxGame::onReleaseContent() {

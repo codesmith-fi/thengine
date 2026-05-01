@@ -1,5 +1,5 @@
 #include "thengine/graphics/Sprite.h"
-#include "thengine/Renderer.h"
+#include "thengine/graphics/SpriteBatch.h"
 
 namespace thengine {
 
@@ -7,9 +7,9 @@ Sprite::Sprite() : Entity(), m_color(255, 255, 255, 255), m_origin(0.5f, 0.5f), 
 
 Sprite::~Sprite() = default;
 
-void Sprite::render(Renderer& renderer) {
+void Sprite::render(SpriteBatch& batch) {
     if (m_texture) {
-        renderer.drawTexture(m_texture, getPosition(), getScale(), getRotation(), m_origin, m_color);
+        batch.draw(m_texture, getPosition(), getScale(), getRotation(), m_origin, m_color, m_depth);
     }
 }
 

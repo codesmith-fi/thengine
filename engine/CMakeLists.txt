@@ -12,6 +12,8 @@ target_sources(thengine PRIVATE
     src/graphics/Sprite.cpp
     src/graphics/Texture.cpp
     src/graphics/Shader.cpp
+    src/graphics/SpriteBatch.cpp
+    src/graphics/SpriteEffect.cpp
 )
 
 # Export headers so the sandbox can #include them
