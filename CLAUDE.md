@@ -64,11 +64,12 @@ project_root/
 - **Modern C++**: Use `thengine` namespace and `#pragma once`.
 - **Header/Source Sync**: When modifying a class, always verify that all members used in the .cpp are defined in the .hpp. Prefer full-file rewrites over partial edits if the file is under 100 lines.
 
-## Naming Conventions
+## Naming and Coding Conventions
 - **Classes / Types**: `PascalCase` (example: `Game`, `Renderer`)
 - **Methods / Functions**: `camelCase` (example: `onInitialize()`, `update()`, `getDeltaTime()`)
 - **Member variables**: `m_camelCase`
 - **Constants**: `UPPER_SNAKE_CASE`
+- **Indenting**: Use Tab to indent code
 
 ## Build System:
 - **Build**: Use CMake. The root CMakeLists.txt should orchestrate both projects. 
