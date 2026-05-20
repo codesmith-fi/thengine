@@ -9,6 +9,7 @@ namespace thengine {
 
 class Renderer;
 class Texture;
+class Shader;
 
 class ContentManager {
 public:
@@ -25,5 +26,8 @@ private:
 
 template<>
 std::shared_ptr<Texture> ContentManager::load<Texture>(const std::string& path);
+
+template<>
+std::shared_ptr<Shader> ContentManager::load<Shader>(const std::string& path);
 
 } // namespace thengine

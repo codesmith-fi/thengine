@@ -66,11 +66,12 @@ project_root/
 
 ## Naming and Coding Conventions
 - **Classes / Types**: `PascalCase` (example: `Game`, `Renderer`)
-- **Methods / Functions**: `camelCase` (example: `onInitialize()`, `update()`, `getDeltaTime()`)
+- **Methods / Functions**: `camelCase` (example: `onInitialize()`, `update()`, `getDeltaTime()`, `setFramerate()`)
 - **Member variables**: `m_camelCase`
 - **Constants**: `UPPER_SNAKE_CASE`
-- **Indenting**: Use Tab to indent code
+- **Indenting**: Use tab to indent code
 - **Comments**: Use english language for commenting
+- **Classes**: Class properties and data members always private and implement getter and setter if access is required
 
 ## Build System:
 - **Build**: Use CMake. The root CMakeLists.txt should orchestrate both projects. 

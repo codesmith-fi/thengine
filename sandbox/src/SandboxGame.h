@@ -2,6 +2,7 @@
 
 #include "thengine/ContentManager.h"
 #include "thengine/Game.h"
+#include "thengine/graphics/BasicEffect.h"
 #include "thengine/graphics/Sprite.h"
 #include "thengine/graphics/Texture.h"
 #include "thengine/graphics/SpriteBatch.h"
@@ -38,4 +39,5 @@ private:
   std::shared_ptr<thengine::Texture> m_testTexture2;
   std::shared_ptr<thengine::Texture> m_testTexture3;
   std::shared_ptr<thengine::Texture> m_playerTexture;
+  std::shared_ptr<thengine::BasicEffect> m_basicEffect;
 };

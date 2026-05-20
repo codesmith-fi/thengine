@@ -10,28 +10,35 @@ class Texture;
 
 class Sprite : public Entity {
 public:
-    Sprite();
-    ~Sprite() override;
+  Sprite();
+  explicit Sprite(int effectId) : m_effectId(effectId) {}
+  ~Sprite() override;
 
-    void render(SpriteBatch& batch) override;
+  void render(SpriteBatch &batch) override;
 
-    void setOrigin(const Vector2& origin) { m_origin = origin; }
-    [[nodiscard]] const Vector2& getOrigin() const { return m_origin; }
+  void setOrigin(const Vector2 &origin) { m_origin = origin; }
+  [[nodiscard]] const Vector2 &getOrigin() const { return m_origin; }
 
-    void setColor(const Color& color) { m_color = color; }
-    [[nodiscard]] const Color& getColor() const { return m_color; }
+  void setColor(const Color &color) { m_color = color; }
+  [[nodiscard]] const Color &getColor() const { return m_color; }
 
-    void setTexture(std::shared_ptr<Texture> texture) { m_texture = texture; }
-    [[nodiscard]] std::shared_ptr<Texture> getTexture() const { return m_texture; }
+  void setTexture(std::shared_ptr<Texture> texture) { m_texture = texture; }
+  [[nodiscard]] std::shared_ptr<Texture> getTexture() const {
+    return m_texture;
+  }
 
-    void setDepth(float depth) { m_depth = depth; }
-    [[nodiscard]] float getDepth() const { return m_depth; }
+  void setDepth(float depth) { m_depth = depth; }
+  [[nodiscard]] float getDepth() const { return m_depth; }
+
+  void setEffect(int id) { m_effectId = id; }
+  [[nodiscard]] int getEffect() const { return m_effectId; }
 
 private:
-    Color m_color;
-    std::shared_ptr<Texture> m_texture;
-    Vector2 m_origin;
-    float m_depth;
+  Color m_color;
+  std::shared_ptr<Texture> m_texture;
+  Vector2 m_origin;
+  float m_depth;
+  int m_effectId = 0;
 };
 
 } // namespace thengine

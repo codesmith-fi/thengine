@@ -1,5 +1,6 @@
 #include "SandboxGame.h"
 #include "thengine/DebugLogger.h"
+#include "thengine/graphics/Shader.h"
 #include "thengine/Input.h"
 #include "thengine/Renderer.h"
 #include <algorithm>
@@ -28,6 +29,10 @@ void SandboxGame::onLoadContent() {
   m_testTexture2 = m_content->load<thengine::Texture>("assets/test2.png");
   m_testTexture3 = m_content->load<thengine::Texture>("assets/test3.png");
   m_playerTexture = m_content->load<thengine::Texture>("assets/player.png");
+
+  auto vert = m_content->load<::thengine::Shader>("assets/shaders/basic.vert");
+  auto frag = m_content->load<::thengine::Shader>("assets/shaders/basic.frag");
+  m_basicEffect = std::make_shared<::thengine::BasicEffect>(getRenderer(), vert, frag);
 
   srand(time(NULL));
 
@@ -111,7 +116,7 @@ void SandboxGame::onRender(float deltaTime) {
 
   getRenderer().clear(100, 149, 237, 255);
 
-  m_spriteBatch->begin();
+  m_spriteBatch->begin(m_basicEffect);
 
   for (int i = 0; i < MAX_SPRITES; i++) {
     m_sprites[i].render(*m_spriteBatch);

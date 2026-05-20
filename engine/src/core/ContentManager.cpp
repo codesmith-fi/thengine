@@ -1,5 +1,6 @@
 #include "thengine/ContentManager.h"
 #include "thengine/graphics/Texture.h"
+#include "thengine/graphics/Shader.h"
 #include "thengine/Renderer.h"
 #include "thengine/DebugLogger.h"
 
@@ -9,6 +10,8 @@
 #include <SDL3/SDL_surface.h>
 
 #include <cstring>
+#include <fstream>
+#include <vector>
 
 namespace thengine {
 
@@ -18,6 +21,15 @@ ContentManager::ContentManager(Renderer& renderer)
 
 template<>
 std::shared_ptr<Texture> ContentManager::load<Texture>(const std::string& path) {
+    auto it = m_cache.find(path);
+    if (it != m_cache.end()) {
+        try {
+            return std::any_cast<std::shared_ptr<Texture>>(it->second);
+        } catch (const std::bad_any_cast& e) {
+            LOG_ERROR() << "Failed to cast cached resource for: " << path << " to Texture";
+        }
+    }
+
     SDL_GPUDevice* device = m_renderer.getDevice();
     if (!device) {
         LOG_ERROR() << "GPU Device is null in Renderer.";
@@ -92,11 +104,6 @@ std::shared_ptr<Texture> ContentManager::load<Texture>(const std::string& path) 
     SDL_GPUTextureTransferInfo transferInfo = {};
     transferInfo.transfer_buffer = transferBuffer;
     transferInfo.offset = 0; // byte offset
-    // Leaving pixels_per_row and rows_per_layer as 0 assumes tightly packed data
-    // SDL_ConvertSurface guarantees a format, but we may need to set pixels_per_row if pitch > w*4
-    // Usually it's tightly packed, but let's be safe.
-    // Actually, setting pitch / 4 isn't possible if struct doesn't have it, but it should in SDL3.
-    // For now we assume `{}` zeroes it out and it's tightly packed.
 
     SDL_GPUTextureRegion region = {};
     region.texture = texture;
@@ -115,7 +122,119 @@ std::shared_ptr<Texture> ContentManager::load<Texture>(const std::string& path) 
     SDL_ReleaseGPUTransferBuffer(device, transferBuffer);
     SDL_DestroySurface(surface);
 
-    return std::shared_ptr<Texture>(new Texture(device, texture, width, height, path));
+    auto texturePtr = std::shared_ptr<Texture>(new Texture(device, texture, width, height, path));
+    m_cache[path] = texturePtr;
+    return texturePtr;
+}
+
+template<>
+std::shared_ptr<Shader> ContentManager::load<Shader>(const std::string& path) {
+    SDL_GPUDevice* device = m_renderer.getDevice();
+    if (!device) {
+        LOG_ERROR() << "GPU Device is null in Renderer.";
+        return nullptr;
+    }
+
+    SDL_GPUShaderFormat supportedFormats = SDL_GetGPUShaderFormats(device);
+    std::string resolvedPath = path;
+    SDL_GPUShaderFormat selectedFormat = SDL_GPU_SHADERFORMAT_INVALID;
+
+    // Check if the path ends with a known shader extension
+    bool hasExtension = false;
+    if (path.size() >= 4) {
+        std::string ext = path.substr(path.size() - 4);
+        if (ext == ".spv" || ext == ".msl") {
+            hasExtension = true;
+            selectedFormat = (ext == ".spv") ? SDL_GPU_SHADERFORMAT_SPIRV : SDL_GPU_SHADERFORMAT_MSL;
+        }
+    }
+    if (path.size() >= 5 && !hasExtension) {
+        std::string ext = path.substr(path.size() - 5);
+        if (ext == ".dxil") {
+            hasExtension = true;
+            selectedFormat = SDL_GPU_SHADERFORMAT_DXIL;
+        }
+    }
+
+    if (!hasExtension) {
+        // Resolve extension automatically
+        if (supportedFormats & SDL_GPU_SHADERFORMAT_SPIRV) {
+            resolvedPath += ".spv";
+            selectedFormat = SDL_GPU_SHADERFORMAT_SPIRV;
+        } else if (supportedFormats & SDL_GPU_SHADERFORMAT_DXIL) {
+            resolvedPath += ".dxil";
+            selectedFormat = SDL_GPU_SHADERFORMAT_DXIL;
+        } else if (supportedFormats & SDL_GPU_SHADERFORMAT_MSL) {
+            resolvedPath += ".msl";
+            selectedFormat = SDL_GPU_SHADERFORMAT_MSL;
+        } else {
+            LOG_ERROR() << "No supported shader format for active GPU device.";
+            return nullptr;
+        }
+    }
+
+    // Check cache using the resolved path
+    auto it = m_cache.find(resolvedPath);
+    if (it != m_cache.end()) {
+        try {
+            return std::any_cast<std::shared_ptr<Shader>>(it->second);
+        } catch (const std::bad_any_cast& e) {
+            LOG_ERROR() << "Failed to cast cached resource for: " << resolvedPath << " to Shader";
+        }
+    }
+
+    // Load file contents
+    std::ifstream file(resolvedPath, std::ios::binary | std::ios::ate);
+    if (!file.is_open()) {
+        LOG_ERROR() << "Failed to open shader file: " << resolvedPath;
+        return nullptr;
+    }
+
+    std::streamsize size = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    std::vector<uint8_t> buffer(size);
+    if (!file.read(reinterpret_cast<char*>(buffer.data()), size)) {
+        LOG_ERROR() << "Failed to read shader file: " << resolvedPath;
+        return nullptr;
+    }
+
+    SDL_GPUShaderStage stage;
+    uint32_t numSamplers = 0;
+    uint32_t numUniformBuffers = 0;
+
+    // Use resolved path for stage inference (since extension might have been added)
+    if (resolvedPath.find(".vert") != std::string::npos || resolvedPath.find(".vertex") != std::string::npos) {
+        stage = SDL_GPU_SHADERSTAGE_VERTEX;
+        numUniformBuffers = 1;
+    } else if (resolvedPath.find(".frag") != std::string::npos || resolvedPath.find(".fragment") != std::string::npos) {
+        stage = SDL_GPU_SHADERSTAGE_FRAGMENT;
+        numSamplers = 1;
+    } else {
+        LOG_ERROR() << "Could not infer shader stage from path: " << resolvedPath << ". Expected '.vert' or '.frag' in filename.";
+        return nullptr;
+    }
+
+    SDL_GPUShaderCreateInfo shaderInfo = {};
+    shaderInfo.code = buffer.data();
+    shaderInfo.code_size = buffer.size();
+    shaderInfo.entrypoint = "main";
+    shaderInfo.format = selectedFormat;
+    shaderInfo.stage = stage;
+    shaderInfo.num_samplers = numSamplers;
+    shaderInfo.num_storage_textures = 0;
+    shaderInfo.num_storage_buffers = 0;
+    shaderInfo.num_uniform_buffers = numUniformBuffers;
+
+    SDL_GPUShader* gpuShader = SDL_CreateGPUShader(device, &shaderInfo);
+    if (!gpuShader) {
+        LOG_ERROR() << "Failed to create GPU Shader from: " << resolvedPath << ", error: " << SDL_GetError();
+        return nullptr;
+    }
+
+    auto shaderPtr = std::shared_ptr<Shader>(new Shader(device, gpuShader));
+    m_cache[resolvedPath] = shaderPtr;
+    return shaderPtr;
 }
 
 } // namespace thengine

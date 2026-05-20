@@ -60,7 +60,7 @@ void SpriteBatch::flush() {
         if (i == m_sprites.size() || m_sprites[i].texture != currentTexture) {
             // Flush current batch
             if (!m_vertexBuffer.empty()) {
-                m_renderer.drawBatched(currentTexture, m_vertexBuffer.data(), m_vertexBuffer.size());
+                m_renderer.drawBatched(currentTexture, m_vertexBuffer.data(), m_vertexBuffer.size(), m_currentEffect);
                 m_vertexBuffer.clear();
             }
             

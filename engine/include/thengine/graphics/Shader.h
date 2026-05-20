@@ -8,6 +8,7 @@ namespace thengine {
 class Shader {
     friend class Renderer;
     friend class ContentManager;
+    friend class SpriteEffect;
 
 public:
     ~Shader();
