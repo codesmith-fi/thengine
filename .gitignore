@@ -1,0 +1,13 @@
+build
+bin
+sdl3_headers
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+engine/CMakeFiles/
+engine/Makefile
+engine/cmake_install.cmake
+sandbox/CMakeFiles/
+sandbox/Makefile
+sandbox/cmake_install.cmake
