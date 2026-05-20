@@ -11,10 +11,11 @@ SpriteBatch::SpriteBatch(Renderer& renderer) : m_renderer(renderer), m_isBegun(f
 
 SpriteBatch::~SpriteBatch() {}
 
-void SpriteBatch::begin(std::shared_ptr<SpriteEffect> effect) {
+void SpriteBatch::begin(std::shared_ptr<SpriteEffect> effect, const Matrix4& transformMatrix) {
     if (m_isBegun) return;
     
     m_currentEffect = effect;
+    m_currentTransform = transformMatrix;
     m_sprites.clear();
     m_isBegun = true;
 }
@@ -60,7 +61,7 @@ void SpriteBatch::flush() {
         if (i == m_sprites.size() || m_sprites[i].texture != currentTexture) {
             // Flush current batch
             if (!m_vertexBuffer.empty()) {
-                m_renderer.drawBatched(currentTexture, m_vertexBuffer.data(), m_vertexBuffer.size(), m_currentEffect);
+                m_renderer.drawBatched(currentTexture, m_vertexBuffer.data(), m_vertexBuffer.size(), m_currentEffect, m_currentTransform);
                 m_vertexBuffer.clear();
             }
             

@@ -4,6 +4,7 @@
 #include "thengine/graphics/Vertex.h"
 #include "thengine/primitives/Color.h"
 #include "thengine/primitives/Vector2.h"
+#include "thengine/math/Matrix4.h"
 
 #include <cstdint>
 #include <memory>
@@ -48,7 +49,8 @@ public:
 
   // Support for SpriteBatch drawing
   void drawBatched(std::shared_ptr<Texture> texture, const Vertex *vertices,
-                   size_t vertexCount, std::shared_ptr<SpriteEffect> effect = nullptr);
+                   size_t vertexCount, std::shared_ptr<SpriteEffect> effect = nullptr,
+                   const Matrix4& transformMatrix = Matrix4::identity());
 
   // Effect registration (required for sprite effects)
   void registerEffect(int id, std::shared_ptr<SpriteEffect> effect);

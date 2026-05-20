@@ -5,6 +5,7 @@
 #include "thengine/primitives/Vector2.h"
 #include "thengine/primitives/Color.h"
 #include "thengine/graphics/Vertex.h"
+#include "thengine/math/Matrix4.h"
 
 namespace thengine {
 
@@ -31,7 +32,7 @@ public:
     SpriteBatch(const SpriteBatch&) = delete;
     SpriteBatch& operator=(const SpriteBatch&) = delete;
 
-    void begin(std::shared_ptr<SpriteEffect> effect = nullptr);
+    void begin(std::shared_ptr<SpriteEffect> effect = nullptr, const Matrix4& transformMatrix = Matrix4::identity());
     
     void draw(std::shared_ptr<Texture> texture, 
               const Vector2& position, 
@@ -50,6 +51,7 @@ private:
     std::vector<SpriteDrawCommand> m_sprites;
     std::vector<Vertex> m_vertexBuffer;
     std::shared_ptr<SpriteEffect> m_currentEffect;
+    Matrix4 m_currentTransform;
     bool m_isBegun;
 };
 

@@ -319,7 +319,8 @@ void Renderer::registerEffect(int id, std::shared_ptr<SpriteEffect> effect) {
 
 void Renderer::drawBatched(std::shared_ptr<Texture> texture,
                            const Vertex *vertices, size_t vertexCount,
-                           std::shared_ptr<SpriteEffect> effect) {
+                           std::shared_ptr<SpriteEffect> effect,
+                           const Matrix4& transformMatrix) {
   if (!m_cmdBuf || !texture || vertexCount == 0)
     return;
 
@@ -389,27 +390,12 @@ void Renderer::drawBatched(std::shared_ptr<Texture> texture,
     samplerBinding.sampler = m_sampler;
     SDL_BindGPUFragmentSamplers(m_renderPass, 0, &samplerBinding, 1);
 
-    // 4. Push constants for Orthographic Projection
+    // 4. Push constants for Orthographic Projection combined with Camera/Transform
+    Matrix4 ortho = Matrix4::createOrthographic(W_screen, H_screen);
+    Matrix4 finalTransform = ortho * transformMatrix;
+
     PushConstants pc = {};
-    pc.transform[0] = 2.0f / W_screen;
-    pc.transform[1] = 0.0f;
-    pc.transform[2] = 0.0f;
-    pc.transform[3] = 0.0f;
-
-    pc.transform[4] = 0.0f;
-    pc.transform[5] = -2.0f / H_screen;
-    pc.transform[6] = 0.0f;
-    pc.transform[7] = 0.0f;
-
-    pc.transform[8] = 0.0f;
-    pc.transform[9] = 0.0f;
-    pc.transform[10] = 1.0f;
-    pc.transform[11] = 0.0f;
-
-    pc.transform[12] = -1.0f;
-    pc.transform[13] = 1.0f;
-    pc.transform[14] = 0.0f;
-    pc.transform[15] = 1.0f;
+    std::memcpy(pc.transform, finalTransform.m, sizeof(pc.transform));
 
     pc.r = 1.0f;
     pc.g = 1.0f;

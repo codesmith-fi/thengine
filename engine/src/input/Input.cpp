@@ -14,6 +14,12 @@ bool Input::isKeyPressed(Key key) noexcept {
         case Key::S:      scancode = SDL_SCANCODE_S; break;
         case Key::D:      scancode = SDL_SCANCODE_D; break;
         case Key::Space:  scancode = SDL_SCANCODE_SPACE; break;
+        case Key::Up:     scancode = SDL_SCANCODE_UP; break;
+        case Key::Down:   scancode = SDL_SCANCODE_DOWN; break;
+        case Key::Left:   scancode = SDL_SCANCODE_LEFT; break;
+        case Key::Right:  scancode = SDL_SCANCODE_RIGHT; break;
+        case Key::Q:      scancode = SDL_SCANCODE_Q; break;
+        case Key::E:      scancode = SDL_SCANCODE_E; break;
     }
 
     if (scancode != SDL_SCANCODE_UNKNOWN) {

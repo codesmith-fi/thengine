@@ -22,6 +22,9 @@ void SandboxGame::onInitialize() {
   LOG_INFO() << "SandboxGame initialized!";
   m_content = std::make_unique<thengine::ContentManager>(getRenderer());
   m_spriteBatch = std::make_unique<thengine::SpriteBatch>(getRenderer());
+  m_camera.position = m_player.getPosition();
+  m_camera.zoom = 1.0f;
+  m_camera.rotation = 0.0f;
 }
 
 void SandboxGame::onLoadContent() {
@@ -104,6 +107,26 @@ bool SandboxGame::onUpdate(float deltaTime) {
   // Rotate slowly over time
   m_player.rotate(deltaTime * 2.0f);
 
+  // Camera follows player
+  m_camera.position = m_player.getPosition();
+
+  // Zoom controls
+  if (thengine::Input::isKeyPressed(thengine::Key::Up)) {
+    m_camera.zoom += deltaTime * 1.0f;
+  }
+  if (thengine::Input::isKeyPressed(thengine::Key::Down)) {
+    m_camera.zoom -= deltaTime * 1.0f;
+    if (m_camera.zoom < 0.1f) m_camera.zoom = 0.1f;
+  }
+
+  // Camera rotation controls
+  if (thengine::Input::isKeyPressed(thengine::Key::Left)) {
+    m_camera.rotation -= deltaTime * 1.0f;
+  }
+  if (thengine::Input::isKeyPressed(thengine::Key::Right)) {
+    m_camera.rotation += deltaTime * 1.0f;
+  }
+
   return true;
 }
 
@@ -116,7 +139,8 @@ void SandboxGame::onRender(float deltaTime) {
 
   getRenderer().clear(100, 149, 237, 255);
 
-  m_spriteBatch->begin(m_basicEffect);
+  thengine::Matrix4 cameraTransform = m_camera.getTransform(WINDOW_WIDTH, WINDOW_HEIGHT);
+  m_spriteBatch->begin(m_basicEffect, cameraTransform);
 
   for (int i = 0; i < MAX_SPRITES; i++) {
     m_sprites[i].render(*m_spriteBatch);

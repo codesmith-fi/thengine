@@ -8,7 +8,13 @@ enum class Key {
     A,
     S,
     D,
-    Space
+    Space,
+    Up,
+    Down,
+    Left,
+    Right,
+    Q,
+    E
 };
 
 class Input {
