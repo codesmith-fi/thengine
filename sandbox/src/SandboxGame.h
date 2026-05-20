@@ -3,7 +3,7 @@
 #include "thengine/ContentManager.h"
 #include "thengine/Game.h"
 #include "thengine/graphics/BasicEffect.h"
-#include "Camera2D.h"
+#include "thengine/view/Camera2D.h"
 #include "thengine/graphics/Sprite.h"
 #include "thengine/graphics/Texture.h"
 #include "thengine/graphics/SpriteBatch.h"
