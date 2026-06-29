@@ -76,6 +76,28 @@ void SandboxGame::onLoadContent() {
   m_player.setTexture(m_playerTexture);
 
   m_debugFont = m_content->loadFont("assets/fonts/DejaVuSansMono.ttf", 24.0f);
+
+  // Initialize point lights static parameters (color, intensity, radius)
+  m_redLight.radius = 180.0f;
+  m_redLight.intensity = 2.0f;
+  m_redLight.color[0] = 1.0f;
+  m_redLight.color[1] = 0.2f;
+  m_redLight.color[2] = 0.2f;
+  m_redLight.color[3] = 1.0f;
+
+  m_greenLight.radius = 250.0f;
+  m_greenLight.intensity = 1.8f;
+  m_greenLight.color[0] = 0.2f;
+  m_greenLight.color[1] = 1.0f;
+  m_greenLight.color[2] = 0.2f;
+  m_greenLight.color[3] = 1.0f;
+
+  m_blueLight.radius = 130.0f;
+  m_blueLight.intensity = 2.2f;
+  m_blueLight.color[0] = 0.2f;
+  m_blueLight.color[1] = 0.2f;
+  m_blueLight.color[2] = 1.0f;
+  m_blueLight.color[3] = 1.0f;
 }
 
 bool SandboxGame::onUpdate(float deltaTime) {
@@ -157,40 +179,19 @@ void SandboxGame::onRender(float deltaTime) {
   float centerWorldY = static_cast<float>(WINDOW_HEIGHT) / 2.0f;
 
   // 1. Light 1 (Red / Torch): Medium radius, moderate speed
-  thengine::PointLight redLight = {};
-  redLight.position[0] = centerWorldX + std::cos(m_lightingTime * 1.2f) * 200.0f;
-  redLight.position[1] = centerWorldY + std::sin(m_lightingTime * 1.2f) * 200.0f;
-  redLight.radius = 180.0f;
-  redLight.intensity = 2.0f;
-  redLight.color[0] = 1.0f;
-  redLight.color[1] = 0.2f;
-  redLight.color[2] = 0.2f;
-  redLight.color[3] = 1.0f;
-  m_basicEffect->addPointLight(redLight);
+  m_redLight.position[0] = centerWorldX + std::cos(m_lightingTime * 1.2f) * 200.0f;
+  m_redLight.position[1] = centerWorldY + std::sin(m_lightingTime * 1.2f) * 200.0f;
+  m_basicEffect->addPointLight(m_redLight);
 
   // 2. Light 2 (Green / Chemical): Large radius, slower speed
-  thengine::PointLight greenLight = {};
-  greenLight.position[0] = centerWorldX + std::cos(m_lightingTime * 0.6f) * 350.0f;
-  greenLight.position[1] = centerWorldY + std::sin(m_lightingTime * 0.6f) * 350.0f;
-  greenLight.radius = 250.0f;
-  greenLight.intensity = 1.8f;
-  greenLight.color[0] = 0.2f;
-  greenLight.color[1] = 1.0f;
-  greenLight.color[2] = 0.2f;
-  greenLight.color[3] = 1.0f;
-  m_basicEffect->addPointLight(greenLight);
+  m_greenLight.position[0] = centerWorldX + std::cos(m_lightingTime * 0.6f) * 350.0f;
+  m_greenLight.position[1] = centerWorldY + std::sin(m_lightingTime * 0.6f) * 350.0f;
+  m_basicEffect->addPointLight(m_greenLight);
 
   // 3. Light 3 (Blue / Magic): Small radius, fast speed
-  thengine::PointLight blueLight = {};
-  blueLight.position[0] = centerWorldX + std::cos(m_lightingTime * 2.4f) * 100.0f;
-  blueLight.position[1] = centerWorldY + std::sin(m_lightingTime * 2.4f) * 100.0f;
-  blueLight.radius = 130.0f;
-  blueLight.intensity = 2.2f;
-  blueLight.color[0] = 0.2f;
-  blueLight.color[1] = 0.2f;
-  blueLight.color[2] = 1.0f;
-  blueLight.color[3] = 1.0f;
-  m_basicEffect->addPointLight(blueLight);
+  m_blueLight.position[0] = centerWorldX + std::cos(m_lightingTime * 2.4f) * 100.0f;
+  m_blueLight.position[1] = centerWorldY + std::sin(m_lightingTime * 2.4f) * 100.0f;
+  m_basicEffect->addPointLight(m_blueLight);
 
   thengine::Matrix4 cameraTransform = m_camera.getTransform(WINDOW_WIDTH, WINDOW_HEIGHT);
   m_spriteBatch->begin(m_basicEffect, cameraTransform);

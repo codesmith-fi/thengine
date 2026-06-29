@@ -48,4 +48,8 @@ private:
   thengine::Camera2D m_camera;
   thengine::FpsCounter m_fpsCounter;
   float m_lightingTime = 0.0f;
+
+  thengine::PointLight m_redLight;
+  thengine::PointLight m_greenLight;
+  thengine::PointLight m_blueLight;
 };
