@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <memory>
 #include <unordered_map>
+#include <vector>
 
 // Forward declarations for SDL types
 struct SDL_GPUDevice;
@@ -21,7 +22,6 @@ struct SDL_GPUBuffer;
 struct SDL_GPUSampler;
 struct SDL_GPUShader;
 struct SDL_GPUTransferBuffer;
-struct SDL_GPUFence;
 
 namespace thengine {
 
@@ -80,9 +80,19 @@ private:
   SDL_GPUBuffer *m_vertexBuffer = nullptr;
   SDL_GPUTransferBuffer *m_transferBuffer = nullptr;
   SDL_GPUSampler *m_sampler = nullptr;
-  SDL_GPUFence *m_fences[NUM_FRAMES] = {};
   size_t m_vertexOffset = 0;
   size_t m_currentFrameIndex = 0;
+
+  struct RenderBatch {
+    std::shared_ptr<Texture> texture;
+    size_t startVertex;
+    size_t vertexCount;
+    std::shared_ptr<SpriteEffect> effect;
+    Matrix4 transform;
+  };
+
+  std::vector<Vertex> m_frameVertices;
+  std::vector<RenderBatch> m_frameBatches;
 
   std::unordered_map<int, std::shared_ptr<SpriteEffect>> m_Effects;
 
