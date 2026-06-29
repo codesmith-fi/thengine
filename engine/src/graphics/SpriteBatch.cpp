@@ -2,6 +2,7 @@
 #include "thengine/Renderer.h"
 #include "thengine/graphics/Texture.h"
 #include "thengine/graphics/SpriteEffect.h"
+#include "thengine/graphics/SpriteFont.h"
 #include <algorithm>
 #include <cmath>
 
@@ -29,7 +30,64 @@ void SpriteBatch::draw(std::shared_ptr<Texture> texture,
                        float depth) {
     if (!m_isBegun || !texture) return;
     
-    m_sprites.push_back({texture, position, scale, rotation, origin, color, depth});
+    m_sprites.push_back({texture, position, scale, rotation, origin, color, depth, Rectangle(), false});
+}
+
+void SpriteBatch::draw(std::shared_ptr<Texture> texture, 
+                       const Vector2& position, 
+                       const Rectangle& sourceRect,
+                       const Vector2& scale, 
+                       float rotation, 
+                       const Vector2& origin, 
+                       const Color& color, 
+                       float depth) {
+    if (!m_isBegun || !texture) return;
+    
+    m_sprites.push_back({texture, position, scale, rotation, origin, color, depth, sourceRect, true});
+}
+
+void SpriteBatch::drawString(const std::shared_ptr<SpriteFont>& font,
+                             const std::string& text,
+                             const Vector2& position,
+                             const Color& color,
+                             float rotation,
+                             const Vector2& origin,
+                             const Vector2& scale,
+                             float depth) {
+    if (!m_isBegun || !font) return;
+
+    Vector2 cursorOffset(0.0f, 0.0f);
+
+    for (char c : text) {
+        if (c == '\n') {
+            cursorOffset.x = 0.0f;
+            cursorOffset.y += font->getSize();
+            continue;
+        }
+
+        const GlyphInfo* glyph = font->getGlyph(c);
+        if (glyph) {
+            Vector2 offset = cursorOffset + Vector2(glyph->offsetX, glyph->offsetY);
+
+            // Apply rotation and scaling to the offset relative to the string origin
+            if (rotation != 0.0f) {
+                float cosR = std::cos(rotation);
+                float sinR = std::sin(rotation);
+                float rx = offset.x * scale.x * cosR - offset.y * scale.y * sinR;
+                float ry = offset.x * scale.x * sinR + offset.y * scale.y * cosR;
+                offset = Vector2(rx, ry);
+            } else {
+                offset.x *= scale.x;
+                offset.y *= scale.y;
+            }
+
+            // Draw the glyph. We pass origin (0, 0) because the offset already defines the position
+            // relative to the string baseline.
+            draw(font->getTexture(), position + offset - origin, glyph->sourceRect, scale, rotation, {0.0f, 0.0f}, color, depth);
+
+            cursorOffset.x += glyph->advanceX;
+        }
+    }
 }
 
 void SpriteBatch::end() {
@@ -73,8 +131,11 @@ void SpriteBatch::flush() {
         if (i < m_sprites.size()) {
             const auto& sprite = m_sprites[i];
             
-            float w = static_cast<float>(sprite.texture->getWidth()) * sprite.scale.x;
-            float h = static_cast<float>(sprite.texture->getHeight()) * sprite.scale.y;
+            float srcW = sprite.useSourceRect ? sprite.sourceRect.width : static_cast<float>(sprite.texture->getWidth());
+            float srcH = sprite.useSourceRect ? sprite.sourceRect.height : static_cast<float>(sprite.texture->getHeight());
+
+            float w = srcW * sprite.scale.x;
+            float h = srcH * sprite.scale.y;
             
             float ox = sprite.origin.x * w;
             float oy = sprite.origin.y * h;
@@ -98,14 +159,28 @@ void SpriteBatch::flush() {
             float b = sprite.color.b / 255.0f;
             float a = sprite.color.a / 255.0f;
             
-            // Push 6 vertices for the quad (TRIANGLELIST)
-            m_vertexBuffer.push_back({p0.x, p0.y, 0.0f, 0.0f, r, g, b, a}); // Top-left
-            m_vertexBuffer.push_back({p1.x, p1.y, 1.0f, 0.0f, r, g, b, a}); // Top-right
-            m_vertexBuffer.push_back({p2.x, p2.y, 0.0f, 1.0f, r, g, b, a}); // Bottom-left
+            float u0 = 0.0f;
+            float v0 = 0.0f;
+            float u1 = 1.0f;
+            float v1 = 1.0f;
 
-            m_vertexBuffer.push_back({p2.x, p2.y, 0.0f, 1.0f, r, g, b, a}); // Bottom-left
-            m_vertexBuffer.push_back({p1.x, p1.y, 1.0f, 0.0f, r, g, b, a}); // Top-right
-            m_vertexBuffer.push_back({p3.x, p3.y, 1.0f, 1.0f, r, g, b, a}); // Bottom-right
+            if (sprite.useSourceRect) {
+                float texW = static_cast<float>(sprite.texture->getWidth());
+                float texH = static_cast<float>(sprite.texture->getHeight());
+                u0 = sprite.sourceRect.x / texW;
+                v0 = sprite.sourceRect.y / texH;
+                u1 = (sprite.sourceRect.x + sprite.sourceRect.width) / texW;
+                v1 = (sprite.sourceRect.y + sprite.sourceRect.height) / texH;
+            }
+
+            // Push 6 vertices for the quad (TRIANGLELIST)
+            m_vertexBuffer.push_back({p0.x, p0.y, u0, v0, r, g, b, a}); // Top-left
+            m_vertexBuffer.push_back({p1.x, p1.y, u1, v0, r, g, b, a}); // Top-right
+            m_vertexBuffer.push_back({p2.x, p2.y, u0, v1, r, g, b, a}); // Bottom-left
+
+            m_vertexBuffer.push_back({p2.x, p2.y, u0, v1, r, g, b, a}); // Bottom-left
+            m_vertexBuffer.push_back({p1.x, p1.y, u1, v0, r, g, b, a}); // Top-right
+            m_vertexBuffer.push_back({p3.x, p3.y, u1, v1, r, g, b, a}); // Bottom-right
         }
     }
 }

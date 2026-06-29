@@ -72,6 +72,8 @@ void SandboxGame::onLoadContent() {
   }
   
   m_player.setTexture(m_playerTexture);
+
+  m_debugFont = m_content->loadFont("assets/fonts/DejaVuSansMono.ttf", 24.0f);
 }
 
 bool SandboxGame::onUpdate(float deltaTime) {
@@ -147,7 +149,30 @@ void SandboxGame::onRender(float deltaTime) {
   }
   m_player.render(*m_spriteBatch);
 
+  // Draw text above player head in world space
+  if (m_debugFont) {
+    m_spriteBatch->drawString(m_debugFont, "Player", m_player.getPosition() - thengine::Vector2(40.0f, 60.0f), thengine::Color(0, 0, 0, 255));
+  }
+
   m_spriteBatch->end();
+
+  // Draw HUD overlay in screen space
+  if (m_debugFont) {
+    m_spriteBatch->begin(m_basicEffect, thengine::Matrix4::identity());
+
+    char posBuffer[128];
+    std::snprintf(posBuffer, sizeof(posBuffer), "Player Pos: (%.2f, %.2f)", m_player.getPosition().x, m_player.getPosition().y);
+    m_spriteBatch->drawString(m_debugFont, posBuffer, thengine::Vector2(20.0f, 20.0f), thengine::Color(255, 255, 0, 255));
+
+    char camBuffer[128];
+    std::snprintf(camBuffer, sizeof(camBuffer), "Camera Zoom: %.2f | Rot: %.2f", m_camera.zoom, m_camera.rotation);
+    m_spriteBatch->drawString(m_debugFont, camBuffer, thengine::Vector2(20.0f, 50.0f), thengine::Color(255, 255, 255, 255));
+
+    m_spriteBatch->drawString(m_debugFont, "Controls: WASD=Move | Up/Down=Zoom | Left/Right=Rotate | ESC=Exit", 
+                              thengine::Vector2(20.0f, static_cast<float>(WINDOW_HEIGHT) - 40.0f), thengine::Color(0, 255, 0, 255));
+
+    m_spriteBatch->end();
+  }
 }
 
 void SandboxGame::onReleaseContent() {

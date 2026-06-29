@@ -3,6 +3,10 @@
 #include "thengine/graphics/Shader.h"
 #include "thengine/Renderer.h"
 #include "thengine/DebugLogger.h"
+#include "thengine/graphics/SpriteFont.h"
+
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "graphics/stb_truetype.h"
 
 #include <SDL3_image/SDL_image.h>
 #include <SDL3/SDL_error.h>
@@ -235,6 +239,163 @@ std::shared_ptr<Shader> ContentManager::load<Shader>(const std::string& path) {
     auto shaderPtr = std::shared_ptr<Shader>(new Shader(device, gpuShader));
     m_cache[resolvedPath] = shaderPtr;
     return shaderPtr;
+}
+
+std::shared_ptr<SpriteFont> ContentManager::loadFont(const std::string& path, float fontSize, int atlasWidth, int atlasHeight) {
+    std::string cacheKey = path + ":" + std::to_string(fontSize);
+    auto it = m_cache.find(cacheKey);
+    if (it != m_cache.end()) {
+        try {
+            return std::any_cast<std::shared_ptr<SpriteFont>>(it->second);
+        } catch (const std::bad_any_cast& e) {
+            LOG_ERROR() << "Failed to cast cached resource for: " << cacheKey << " to SpriteFont";
+        }
+    }
+
+    SDL_GPUDevice* device = m_renderer.getDevice();
+    if (!device) {
+        LOG_ERROR() << "GPU Device is null in Renderer.";
+        return nullptr;
+    }
+
+    std::ifstream file(path, std::ios::binary | std::ios::ate);
+    if (!file.is_open()) {
+        LOG_ERROR() << "Failed to open font file: " << path;
+        return nullptr;
+    }
+
+    std::streamsize size = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    std::vector<uint8_t> ttfBuffer(size);
+    if (!file.read(reinterpret_cast<char*>(ttfBuffer.data()), size)) {
+        LOG_ERROR() << "Failed to read font file: " << path;
+        return nullptr;
+    }
+    file.close();
+
+    std::vector<uint8_t> atlasPixels(atlasWidth * atlasHeight, 0);
+
+    stbtt_pack_context packContext;
+    stbtt_packedchar packedChars[96];
+
+    if (!stbtt_PackBegin(&packContext, atlasPixels.data(), atlasWidth, atlasHeight, 0, 1, nullptr)) {
+        LOG_ERROR() << "Failed to initialize stb_truetype packing context";
+        return nullptr;
+    }
+
+    stbtt_pack_range range;
+    range.font_size = fontSize;
+    range.first_unicode_codepoint_in_range = 32;
+    range.array_of_unicode_codepoints = nullptr;
+    range.num_chars = 96;
+    range.chardata_for_range = packedChars;
+    range.h_oversample = 1;
+    range.v_oversample = 1;
+
+    if (!stbtt_PackFontRanges(&packContext, ttfBuffer.data(), 0, &range, 1)) {
+        LOG_ERROR() << "Failed to pack font characters";
+        stbtt_PackEnd(&packContext);
+        return nullptr;
+    }
+
+    stbtt_PackEnd(&packContext);
+
+    std::vector<uint8_t> rgbaPixels(atlasWidth * atlasHeight * 4, 0);
+    for (int i = 0; i < atlasWidth * atlasHeight; ++i) {
+        rgbaPixels[i * 4 + 0] = 255;
+        rgbaPixels[i * 4 + 1] = 255;
+        rgbaPixels[i * 4 + 2] = 255;
+        rgbaPixels[i * 4 + 3] = atlasPixels[i];
+    }
+
+    SDL_GPUTextureCreateInfo textureInfo = {};
+    textureInfo.type = SDL_GPU_TEXTURETYPE_2D;
+    textureInfo.format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
+    textureInfo.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
+    textureInfo.width = atlasWidth;
+    textureInfo.height = atlasHeight;
+    textureInfo.layer_count_or_depth = 1;
+    textureInfo.num_levels = 1;
+
+    SDL_GPUTexture* gpuTexture = SDL_CreateGPUTexture(device, &textureInfo);
+    if (!gpuTexture) {
+        LOG_ERROR() << "Failed to create GPU Texture for font: " << SDL_GetError();
+        return nullptr;
+    }
+
+    SDL_GPUTransferBufferCreateInfo transferBufferInfo = {};
+    transferBufferInfo.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+    transferBufferInfo.size = atlasWidth * atlasHeight * 4;
+
+    SDL_GPUTransferBuffer* transferBuffer = SDL_CreateGPUTransferBuffer(device, &transferBufferInfo);
+    if (!transferBuffer) {
+        LOG_ERROR() << "Failed to create GPU Transfer Buffer for font: " << SDL_GetError();
+        SDL_ReleaseGPUTexture(device, gpuTexture);
+        return nullptr;
+    }
+
+    void* map = SDL_MapGPUTransferBuffer(device, transferBuffer, false);
+    if (map) {
+        std::memcpy(map, rgbaPixels.data(), rgbaPixels.size());
+        SDL_UnmapGPUTransferBuffer(device, transferBuffer);
+    } else {
+        LOG_ERROR() << "Failed to map GPU Transfer Buffer for font: " << SDL_GetError();
+        SDL_ReleaseGPUTransferBuffer(device, transferBuffer);
+        SDL_ReleaseGPUTexture(device, gpuTexture);
+        return nullptr;
+    }
+
+    SDL_GPUCommandBuffer* cmdBuf = SDL_AcquireGPUCommandBuffer(device);
+    if (!cmdBuf) {
+        LOG_ERROR() << "Failed to acquire command buffer for font upload: " << SDL_GetError();
+        SDL_ReleaseGPUTransferBuffer(device, transferBuffer);
+        SDL_ReleaseGPUTexture(device, gpuTexture);
+        return nullptr;
+    }
+
+    SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(cmdBuf);
+    
+    SDL_GPUTextureTransferInfo transferInfo = {};
+    transferInfo.transfer_buffer = transferBuffer;
+    transferInfo.offset = 0;
+
+    SDL_GPUTextureRegion region = {};
+    region.texture = gpuTexture;
+    region.w = atlasWidth;
+    region.h = atlasHeight;
+    region.d = 1;
+
+    SDL_UploadToGPUTexture(copyPass, &transferInfo, &region, false);
+    
+    SDL_EndGPUCopyPass(copyPass);
+    SDL_SubmitGPUCommandBuffer(cmdBuf);
+    SDL_ReleaseGPUTransferBuffer(device, transferBuffer);
+
+    auto texture = std::shared_ptr<Texture>(new Texture(device, gpuTexture, atlasWidth, atlasHeight, path + "_atlas"));
+
+    std::unordered_map<char, GlyphInfo> glyphs;
+    for (int i = 0; i < 96; ++i) {
+        char c = static_cast<char>(32 + i);
+        const auto& pc = packedChars[i];
+
+        GlyphInfo glyph;
+        glyph.sourceRect = Rectangle(
+            static_cast<float>(pc.x0),
+            static_cast<float>(pc.y0),
+            static_cast<float>(pc.x1 - pc.x0),
+            static_cast<float>(pc.y1 - pc.y0)
+        );
+        glyph.offsetX = pc.xoff;
+        glyph.offsetY = pc.yoff;
+        glyph.advanceX = pc.xadvance;
+
+        glyphs[c] = glyph;
+    }
+
+    auto fontPtr = std::make_shared<SpriteFont>(texture, fontSize, glyphs);
+    m_cache[cacheKey] = fontPtr;
+    return fontPtr;
 }
 
 } // namespace thengine

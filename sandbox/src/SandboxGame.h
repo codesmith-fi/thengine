@@ -7,6 +7,7 @@
 #include "thengine/graphics/Sprite.h"
 #include "thengine/graphics/Texture.h"
 #include "thengine/graphics/SpriteBatch.h"
+#include "thengine/graphics/SpriteFont.h"
 #include <array>
 #include <memory>
 #include <string>
@@ -41,5 +42,6 @@ private:
   std::shared_ptr<thengine::Texture> m_testTexture3;
   std::shared_ptr<thengine::Texture> m_playerTexture;
   std::shared_ptr<thengine::BasicEffect> m_basicEffect;
+  std::shared_ptr<thengine::SpriteFont> m_debugFont;
   thengine::Camera2D m_camera;
 };

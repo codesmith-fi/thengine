@@ -2,8 +2,10 @@
 
 #include <vector>
 #include <memory>
+#include <string>
 #include "thengine/primitives/Vector2.h"
 #include "thengine/primitives/Color.h"
+#include "thengine/primitives/Rectangle.h"
 #include "thengine/graphics/Vertex.h"
 #include "thengine/math/Matrix4.h"
 
@@ -12,6 +14,7 @@ namespace thengine {
 class Renderer;
 class Texture;
 class SpriteEffect;
+class SpriteFont;
 
 struct SpriteDrawCommand {
     std::shared_ptr<Texture> texture;
@@ -21,6 +24,8 @@ struct SpriteDrawCommand {
     Vector2 origin;
     Color color;
     float depth;
+    Rectangle sourceRect;
+    bool useSourceRect;
 };
 
 class SpriteBatch {
@@ -41,7 +46,25 @@ public:
               const Vector2& origin = {0.5f, 0.5f}, 
               const Color& color = {255, 255, 255, 255}, 
               float depth = 0.0f);
+
+    void draw(std::shared_ptr<Texture> texture, 
+              const Vector2& position, 
+              const Rectangle& sourceRect,
+              const Vector2& scale = {1.0f, 1.0f}, 
+              float rotation = 0.0f, 
+              const Vector2& origin = {0.5f, 0.5f}, 
+              const Color& color = {255, 255, 255, 255}, 
+              float depth = 0.0f);
               
+    void drawString(const std::shared_ptr<SpriteFont>& font,
+                    const std::string& text,
+                    const Vector2& position,
+                    const Color& color = {255, 255, 255, 255},
+                    float rotation = 0.0f,
+                    const Vector2& origin = {0.0f, 0.0f},
+                    const Vector2& scale = {1.0f, 1.0f},
+                    float depth = 0.0f);
+
     void end();
 
 private:

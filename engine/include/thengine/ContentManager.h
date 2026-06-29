@@ -10,6 +10,7 @@ namespace thengine {
 class Renderer;
 class Texture;
 class Shader;
+class SpriteFont;
 
 class ContentManager {
 public:
@@ -18,6 +19,8 @@ public:
 
     template<typename T>
     std::shared_ptr<T> load(const std::string& path);
+
+    std::shared_ptr<SpriteFont> loadFont(const std::string& path, float fontSize, int atlasWidth = 512, int atlasHeight = 512);
 
 private:
     Renderer& m_renderer;
