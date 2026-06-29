@@ -104,6 +104,8 @@ private:
 
   std::unordered_map<int, std::shared_ptr<SpriteEffect>> m_Effects;
 
+  float m_clearColor[4] = {0.39f, 0.58f, 0.93f, 1.0f};
+
   void initPipeline();
   void cleanupPipeline();
 };

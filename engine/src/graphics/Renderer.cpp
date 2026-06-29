@@ -278,7 +278,7 @@ bool Renderer::beginFrame() {
 
   SDL_GPUColorTargetInfo colorTarget = {};
   colorTarget.texture = m_swapchainTexture;
-  colorTarget.clear_color = {0.39f, 0.58f, 0.93f, 1.0f}; // Cornflower blue
+  colorTarget.clear_color = {m_clearColor[0], m_clearColor[1], m_clearColor[2], m_clearColor[3]};
   colorTarget.load_op = SDL_GPU_LOADOP_CLEAR;
   colorTarget.store_op = SDL_GPU_STOREOP_STORE;
 
@@ -329,7 +329,7 @@ void Renderer::endFrame() {
     // 2. Start the single render pass with LOADOP_CLEAR (to clear swapchain and begin drawing)
     SDL_GPUColorTargetInfo colorTarget = {};
     colorTarget.texture = m_swapchainTexture;
-    colorTarget.clear_color = {0.39f, 0.58f, 0.93f, 1.0f}; // Cornflower blue
+    colorTarget.clear_color = {m_clearColor[0], m_clearColor[1], m_clearColor[2], m_clearColor[3]};
     colorTarget.load_op = SDL_GPU_LOADOP_CLEAR;
     colorTarget.store_op = SDL_GPU_STOREOP_STORE;
     m_renderPass = SDL_BeginGPURenderPass(m_cmdBuf, &colorTarget, 1, nullptr);
@@ -420,7 +420,10 @@ void Renderer::endFrame() {
 }
 
 void Renderer::clear(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-  // We already clear in beginFrame.
+  m_clearColor[0] = static_cast<float>(r) / 255.0f;
+  m_clearColor[1] = static_cast<float>(g) / 255.0f;
+  m_clearColor[2] = static_cast<float>(b) / 255.0f;
+  m_clearColor[3] = static_cast<float>(a) / 255.0f;
 }
 
 void Renderer::fillRect(const Vector2 &pos, const Vector2 &size,

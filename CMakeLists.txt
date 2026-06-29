@@ -25,3 +25,6 @@ add_subdirectory(engine)
 
 # 3. Add the sandbox application
 add_subdirectory(sandbox)
+
+# 4. Add the emberborn application
+add_subdirectory(emberborn)
