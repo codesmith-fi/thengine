@@ -8,7 +8,7 @@
 
 SandboxGame::SandboxGame(const std::string &title, int width, int height)
     : thengine::Game(title, width, height), m_hasLoggedUpdate(false),
-      m_hasLoggedRender(false) {
+      m_hasLoggedRender(false), m_culledCount(0) {
 
   m_player.setPosition(thengine::Vector2(width / 2.0f, height / 2.0f));
   m_player.setScale(thengine::Vector2(0.1f, 0.1f));
@@ -145,8 +145,22 @@ void SandboxGame::onRender(float deltaTime) {
   thengine::Matrix4 cameraTransform = m_camera.getTransform(WINDOW_WIDTH, WINDOW_HEIGHT);
   m_spriteBatch->begin(m_basicEffect, cameraTransform);
 
+  m_culledCount = 0;
   for (int i = 0; i < MAX_SPRITES; i++) {
-    m_sprites[i].render(*m_spriteBatch);
+    auto texture = m_sprites[i].getTexture();
+    if (texture) {
+      thengine::Vector2 size(
+        static_cast<float>(texture->getWidth()) * m_sprites[i].getScale().x,
+        static_cast<float>(texture->getHeight()) * m_sprites[i].getScale().y
+      );
+      if (m_camera.isVisible(m_sprites[i].getPosition(), size, m_sprites[i].getRotation(), m_sprites[i].getOrigin(), cameraTransform, WINDOW_WIDTH, WINDOW_HEIGHT)) {
+        m_sprites[i].render(*m_spriteBatch);
+      } else {
+        m_culledCount++;
+      }
+    } else {
+      m_sprites[i].render(*m_spriteBatch);
+    }
   }
   m_player.render(*m_spriteBatch);
 
@@ -164,7 +178,7 @@ void SandboxGame::onRender(float deltaTime) {
     std::string posStr = std::format("Pelaajan Sijainti: ({:.2f}, {:.2f})", m_player.getPosition().x, m_player.getPosition().y);
     m_spriteBatch->drawString(m_debugFont, posStr, thengine::Vector2(20.0f, 20.0f), thengine::Color(255, 255, 0, 255));
 
-    std::string camStr = std::format("Kamera Zoomaus: {:.2f} | Kierto: {:.2f}", m_camera.zoom, m_camera.rotation);
+    std::string camStr = std::format("Kamera Zoomaus: {:.2f} | Kierto: {:.2f} | Karsitut: {}/{}", m_camera.zoom, m_camera.rotation, m_culledCount, MAX_SPRITES);
     m_spriteBatch->drawString(m_debugFont, camStr, thengine::Vector2(20.0f, 50.0f), thengine::Color(255, 255, 255, 255));
 
     m_spriteBatch->drawString(m_debugFont, "Ääkköstesti: Hyvää päivää! Åäö", thengine::Vector2(20.0f, 80.0f), thengine::Color(255, 100, 255, 255));

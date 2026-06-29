@@ -32,6 +32,7 @@ protected:
 private:
   bool m_hasLoggedUpdate;
   bool m_hasLoggedRender;
+  int m_culledCount;
   thengine::Sprite m_player;
   std::array<thengine::Sprite, MAX_SPRITES> m_sprites;
 
