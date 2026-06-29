@@ -196,15 +196,16 @@ void Renderer::initPipeline() {
 
   SDL_GPUBufferCreateInfo bufferInfo = {};
   bufferInfo.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
-  bufferInfo.size = sizeof(Vertex) * MAX_VERTICES;
-
-  m_vertexBuffer = SDL_CreateGPUBuffer(m_device, &bufferInfo);
+  bufferInfo.size = sizeof(Vertex) * MAX_VERTICES_PER_FRAME;
 
   SDL_GPUTransferBufferCreateInfo tbInfo = {};
   tbInfo.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
-  tbInfo.size = sizeof(Vertex) * MAX_VERTICES;
+  tbInfo.size = sizeof(Vertex) * MAX_VERTICES_PER_FRAME;
 
-  m_transferBuffer = SDL_CreateGPUTransferBuffer(m_device, &tbInfo);
+  for (size_t i = 0; i < NUM_FRAMES; ++i) {
+    m_vertexBuffers[i] = SDL_CreateGPUBuffer(m_device, &bufferInfo);
+    m_transferBuffers[i] = SDL_CreateGPUTransferBuffer(m_device, &tbInfo);
+  }
 
   SDL_GPUSamplerCreateInfo samplerInfo = {};
   samplerInfo.min_filter = SDL_GPU_FILTER_NEAREST;
@@ -228,13 +229,15 @@ void Renderer::cleanupPipeline() {
     SDL_ReleaseGPUGraphicsPipeline(m_device, m_spritePipeline);
     m_spritePipeline = nullptr;
   }
-  if (m_vertexBuffer) {
-    SDL_ReleaseGPUBuffer(m_device, m_vertexBuffer);
-    m_vertexBuffer = nullptr;
-  }
-  if (m_transferBuffer) {
-    SDL_ReleaseGPUTransferBuffer(m_device, m_transferBuffer);
-    m_transferBuffer = nullptr;
+  for (size_t i = 0; i < NUM_FRAMES; ++i) {
+    if (m_vertexBuffers[i]) {
+      SDL_ReleaseGPUBuffer(m_device, m_vertexBuffers[i]);
+      m_vertexBuffers[i] = nullptr;
+    }
+    if (m_transferBuffers[i]) {
+      SDL_ReleaseGPUTransferBuffer(m_device, m_transferBuffers[i]);
+      m_transferBuffers[i] = nullptr;
+    }
   }
 }
 
@@ -242,6 +245,7 @@ bool Renderer::beginFrame() {
   if (!m_device)
     return false;
 
+  m_frameIndex = (m_frameIndex + 1) % NUM_FRAMES;
   m_vertexOffset = 0;
 
   m_cmdBuf = SDL_AcquireGPUCommandBuffer(m_device);
@@ -302,9 +306,10 @@ void Renderer::drawBatched(std::shared_ptr<Texture> texture,
   if (!m_cmdBuf || !texture || vertexCount == 0)
     return;
 
-  if (m_vertexOffset + vertexCount > MAX_VERTICES) {
-    LOG_WARN() << "Vertex buffer streaming limit reached, wrapping around! Current offset: " 
-                  << m_vertexOffset << ", required: " << vertexCount;
+  if (m_vertexOffset + vertexCount > MAX_VERTICES_PER_FRAME) {
+    LOG_WARN() << "Vertex buffer streaming limit reached for frame " << m_frameIndex 
+               << ", wrapping around! Current offset: " << m_vertexOffset 
+               << ", required: " << vertexCount;
     m_vertexOffset = 0;
   }
 
@@ -313,21 +318,21 @@ void Renderer::drawBatched(std::shared_ptr<Texture> texture,
     m_renderPass = nullptr;
   }
 
-  // 1. Upload dynamic vertex data using the pre-allocated transfer buffer
-  void *map = SDL_MapGPUTransferBuffer(m_device, m_transferBuffer, false);
+  // 1. Upload dynamic vertex data using the pre-allocated transfer buffer for the current frame
+  void *map = SDL_MapGPUTransferBuffer(m_device, m_transferBuffers[m_frameIndex], false);
   if (map) {
     std::memcpy(static_cast<char*>(map) + (m_vertexOffset * sizeof(Vertex)),
                 vertices,
                 vertexCount * sizeof(Vertex));
-    SDL_UnmapGPUTransferBuffer(m_device, m_transferBuffer);
+    SDL_UnmapGPUTransferBuffer(m_device, m_transferBuffers[m_frameIndex]);
 
     SDL_GPUCopyPass *copy = SDL_BeginGPUCopyPass(m_cmdBuf);
     SDL_GPUTransferBufferLocation srcLoc = {};
-    srcLoc.transfer_buffer = m_transferBuffer;
+    srcLoc.transfer_buffer = m_transferBuffers[m_frameIndex];
     srcLoc.offset = m_vertexOffset * sizeof(Vertex);
 
     SDL_GPUBufferRegion dstReg = {};
-    dstReg.buffer = m_vertexBuffer;
+    dstReg.buffer = m_vertexBuffers[m_frameIndex];
     dstReg.offset = m_vertexOffset * sizeof(Vertex);
     dstReg.size = vertexCount * sizeof(Vertex);
 
@@ -357,7 +362,7 @@ void Renderer::drawBatched(std::shared_ptr<Texture> texture,
     SDL_SetGPUViewport(m_renderPass, &viewport);
 
     SDL_GPUBufferBinding vertexBinding = {};
-    vertexBinding.buffer = m_vertexBuffer;
+    vertexBinding.buffer = m_vertexBuffers[m_frameIndex];
     vertexBinding.offset = m_vertexOffset * sizeof(Vertex);
     SDL_BindGPUVertexBuffers(m_renderPass, 0, &vertexBinding, 1);
 
