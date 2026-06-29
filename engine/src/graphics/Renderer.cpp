@@ -362,29 +362,31 @@ void Renderer::endFrame() {
       samplerBinding.sampler = m_sampler;
       SDL_BindGPUFragmentSamplers(m_renderPass, 0, &samplerBinding, 1);
 
-      // Push fragment ambient constants to slot 0
-      struct AmbientConstants {
-        float r, g, b, a;
-        float intensity;
-        float padding[3];
-      } ac = {};
+      // Push fragment lighting constants to slot 0
+      struct LightingConstants {
+        float ambientColor[4];
+        float ambientIntensity;
+        int activeLightCount;
+        float padding1[2];
+        PointLight lights[10];
+      } lc = {};
 
-      auto basicEffect = std::dynamic_pointer_cast<BasicEffect>(batch.effect);
-      if (basicEffect) {
-        Color col = basicEffect->getAmbientColor();
-        ac.r = static_cast<float>(col.r) / 255.0f;
-        ac.g = static_cast<float>(col.g) / 255.0f;
-        ac.b = static_cast<float>(col.b) / 255.0f;
-        ac.a = static_cast<float>(col.a) / 255.0f;
-        ac.intensity = basicEffect->getAmbientIntensity();
+      if (batch.hasLighting) {
+        std::memcpy(lc.ambientColor, batch.ambientColor, sizeof(lc.ambientColor));
+        lc.ambientIntensity = batch.ambientIntensity;
+        lc.activeLightCount = batch.activeLightCount;
+        for (int i = 0; i < batch.activeLightCount && i < 10; ++i) {
+          lc.lights[i] = batch.lights[i];
+        }
       } else {
-        ac.r = 1.0f;
-        ac.g = 1.0f;
-        ac.b = 1.0f;
-        ac.a = 1.0f;
-        ac.intensity = 1.0f;
+        lc.ambientColor[0] = 1.0f;
+        lc.ambientColor[1] = 1.0f;
+        lc.ambientColor[2] = 1.0f;
+        lc.ambientColor[3] = 1.0f;
+        lc.ambientIntensity = 1.0f;
+        lc.activeLightCount = 0;
       }
-      SDL_PushGPUFragmentUniformData(m_cmdBuf, 0, &ac, sizeof(ac));
+      SDL_PushGPUFragmentUniformData(m_cmdBuf, 0, &lc, sizeof(lc));
 
       Matrix4 finalTransform = ortho * batch.transform;
 
@@ -443,6 +445,26 @@ void Renderer::drawBatched(std::shared_ptr<Texture> texture,
   batch.vertexCount = vertexCount;
   batch.effect = effect;
   batch.transform = transformMatrix;
+
+  // Snapshot the BasicEffect lighting parameters
+  auto basicEffect = std::dynamic_pointer_cast<BasicEffect>(effect);
+  if (basicEffect) {
+    batch.hasLighting = true;
+    Color col = basicEffect->getAmbientColor();
+    batch.ambientColor[0] = static_cast<float>(col.r) / 255.0f;
+    batch.ambientColor[1] = static_cast<float>(col.g) / 255.0f;
+    batch.ambientColor[2] = static_cast<float>(col.b) / 255.0f;
+    batch.ambientColor[3] = static_cast<float>(col.a) / 255.0f;
+    batch.ambientIntensity = basicEffect->getAmbientIntensity();
+
+    const auto& effectLights = basicEffect->getPointLights();
+    batch.activeLightCount = static_cast<int>(effectLights.size());
+    for (size_t i = 0; i < effectLights.size() && i < 10; ++i) {
+      batch.lights[i] = effectLights[i];
+    }
+  } else {
+    batch.hasLighting = false;
+  }
 
   m_frameBatches.push_back(batch);
   m_frameVertices.insert(m_frameVertices.end(), vertices, vertices + vertexCount);

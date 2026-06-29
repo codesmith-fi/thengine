@@ -1,6 +1,7 @@
 #pragma once
 
 #include "thengine/graphics/SpriteEffect.h"
+#include "thengine/graphics/BasicEffect.h"
 #include "thengine/graphics/Vertex.h"
 #include "thengine/primitives/Color.h"
 #include "thengine/primitives/Vector2.h"
@@ -89,6 +90,13 @@ private:
     size_t vertexCount;
     std::shared_ptr<SpriteEffect> effect;
     Matrix4 transform;
+
+    // Snapshot of lighting properties at the time of draw
+    bool hasLighting;
+    float ambientColor[4];
+    float ambientIntensity;
+    int activeLightCount;
+    PointLight lights[10];
   };
 
   std::vector<Vertex> m_frameVertices;

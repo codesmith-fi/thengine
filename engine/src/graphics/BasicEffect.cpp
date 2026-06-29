@@ -22,4 +22,18 @@ float BasicEffect::getAmbientIntensity() const noexcept {
     return m_ambientIntensity;
 }
 
+void BasicEffect::clearLights() noexcept {
+    m_pointLights.clear();
+}
+
+void BasicEffect::addPointLight(const PointLight& light) noexcept {
+    if (m_pointLights.size() < 10) {
+        m_pointLights.push_back(light);
+    }
+}
+
+const std::vector<PointLight>& BasicEffect::getPointLights() const noexcept {
+    return m_pointLights;
+}
+
 } // namespace thengine

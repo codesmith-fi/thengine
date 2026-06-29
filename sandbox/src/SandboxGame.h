@@ -47,4 +47,5 @@ private:
   std::shared_ptr<thengine::SpriteFont> m_debugFont;
   thengine::Camera2D m_camera;
   thengine::FpsCounter m_fpsCounter;
+  float m_lightingTime = 0.0f;
 };
