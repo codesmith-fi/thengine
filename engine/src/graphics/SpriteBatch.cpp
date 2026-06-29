@@ -161,6 +161,7 @@ void SpriteBatch::flush() {
     
     std::shared_ptr<Texture> currentTexture = m_sprites[0].texture;
     m_vertexBuffer.clear();
+    m_vertexBuffer.reserve(m_sprites.size() * 6);
     
     for (size_t i = 0; i <= m_sprites.size(); ++i) {
         if (i == m_sprites.size() || m_sprites[i].texture != currentTexture) {
@@ -187,8 +188,12 @@ void SpriteBatch::flush() {
             float ox = sprite.origin.x * w;
             float oy = sprite.origin.y * h;
             
-            float c = std::cos(sprite.rotation);
-            float s = std::sin(sprite.rotation);
+            float c = 1.0f;
+            float s = 0.0f;
+            if (sprite.rotation != 0.0f) {
+                c = std::cos(sprite.rotation);
+                s = std::sin(sprite.rotation);
+            }
             
             auto transform = [&](float lx, float ly) {
                 float rx = lx * c - ly * s;

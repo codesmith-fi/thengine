@@ -24,9 +24,9 @@ void SandboxGame::onInitialize() {
   LOG_INFO() << "SandboxGame initialized!";
   m_content = std::make_unique<thengine::ContentManager>(getRenderer());
   m_spriteBatch = std::make_unique<thengine::SpriteBatch>(getRenderer());
-  m_camera.position = m_player.getPosition();
-  m_camera.zoom = 1.0f;
-  m_camera.rotation = 0.0f;
+  m_camera.setPosition(m_player.getPosition());
+  m_camera.setZoom(1.0f);
+  m_camera.setRotation(0.0f);
 }
 
 void SandboxGame::onLoadContent() {
@@ -137,23 +137,23 @@ bool SandboxGame::onUpdate(float deltaTime) {
   m_player.rotate(deltaTime * 2.0f);
 
   // Camera follows player
-  m_camera.position = m_player.getPosition();
+  m_camera.setPosition(m_player.getPosition());
 
   // Zoom controls
   if (thengine::Input::isKeyPressed(thengine::Key::Up)) {
-    m_camera.zoom += deltaTime * 1.0f;
+    m_camera.setZoom(m_camera.getZoom() + deltaTime * 1.0f);
   }
   if (thengine::Input::isKeyPressed(thengine::Key::Down)) {
-    m_camera.zoom -= deltaTime * 1.0f;
-    if (m_camera.zoom < 0.1f) m_camera.zoom = 0.1f;
+    m_camera.setZoom(m_camera.getZoom() - deltaTime * 1.0f);
+    if (m_camera.getZoom() < 0.1f) m_camera.setZoom(0.1f);
   }
 
   // Camera rotation controls
   if (thengine::Input::isKeyPressed(thengine::Key::Left)) {
-    m_camera.rotation -= deltaTime * 1.0f;
+    m_camera.setRotation(m_camera.getRotation() - deltaTime * 1.0f);
   }
   if (thengine::Input::isKeyPressed(thengine::Key::Right)) {
-    m_camera.rotation += deltaTime * 1.0f;
+    m_camera.setRotation(m_camera.getRotation() + deltaTime * 1.0f);
   }
 
   return true;
@@ -234,7 +234,7 @@ void SandboxGame::onRender(float deltaTime) {
     std::string posStr = std::format("Pelaajan Sijainti: ({:.2f}, {:.2f})", m_player.getPosition().x, m_player.getPosition().y);
     m_spriteBatch->drawString(m_debugFont, posStr, thengine::Vector2(20.0f, 20.0f), thengine::Color(255, 255, 0, 255));
 
-    std::string camStr = std::format("Kamera Zoomaus: {:.2f} | Kierto: {:.2f} | Karsitut: {}/{}", m_camera.zoom, m_camera.rotation, m_culledCount, MAX_SPRITES);
+    std::string camStr = std::format("Kamera Zoomaus: {:.2f} | Kierto: {:.2f} | Karsitut: {}/{}", m_camera.getZoom(), m_camera.getRotation(), m_culledCount, MAX_SPRITES);
     m_spriteBatch->drawString(m_debugFont, camStr, thengine::Vector2(20.0f, 50.0f), thengine::Color(255, 255, 255, 255));
 
     m_spriteBatch->drawString(m_debugFont, "Ääkköstesti: Hyvää päivää! Åäö", thengine::Vector2(20.0f, 80.0f), thengine::Color(255, 100, 255, 255));
