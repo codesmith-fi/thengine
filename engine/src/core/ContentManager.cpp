@@ -214,6 +214,7 @@ std::shared_ptr<Shader> ContentManager::load<Shader>(const std::string& path) {
     } else if (resolvedPath.find(".frag") != std::string::npos || resolvedPath.find(".fragment") != std::string::npos) {
         stage = SDL_GPU_SHADERSTAGE_FRAGMENT;
         numSamplers = 1;
+        numUniformBuffers = 1;
     } else {
         LOG_ERROR() << "Could not infer shader stage from path: " << resolvedPath << ". Expected '.vert' or '.frag' in filename.";
         return nullptr;

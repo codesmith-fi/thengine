@@ -144,6 +144,10 @@ void SandboxGame::onRender(float deltaTime) {
 
   getRenderer().clear(100, 149, 237, 255);
 
+  // Set dark atmospheric ambient lighting for the world-space batch
+  m_basicEffect->setAmbientColor(thengine::Color(50, 50, 80, 255)); // Dark blue-violet
+  m_basicEffect->setAmbientIntensity(0.4f);
+
   thengine::Matrix4 cameraTransform = m_camera.getTransform(WINDOW_WIDTH, WINDOW_HEIGHT);
   m_spriteBatch->begin(m_basicEffect, cameraTransform);
 
@@ -172,6 +176,10 @@ void SandboxGame::onRender(float deltaTime) {
   }
 
   m_spriteBatch->end();
+
+  // Reset to fully lit for the HUD overlay in screen space
+  m_basicEffect->setAmbientColor(thengine::Color(255, 255, 255, 255));
+  m_basicEffect->setAmbientIntensity(1.0f);
 
   // Draw HUD overlay in screen space
   if (m_debugFont) {

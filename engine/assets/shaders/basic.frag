@@ -7,6 +7,15 @@ layout(location = 0) out vec4 outFragColor;
 
 layout(set = 2, binding = 0) uniform sampler2D texSampler;
 
+layout(set = 3, binding = 0) uniform AmbientConstants {
+    vec4 ambientColor;
+    float ambientIntensity;
+} ambient;
+
 void main() {
-    outFragColor = texture(texSampler, inUV) * inColor;
+    vec4 texColor = texture(texSampler, inUV);
+    vec4 tintedColor = texColor * inColor;
+    
+    vec3 litRGB = tintedColor.rgb * (ambient.ambientColor.rgb * ambient.ambientIntensity);
+    outFragColor = vec4(litRGB, tintedColor.a);
 }

@@ -2,6 +2,7 @@
 #include "thengine/DebugLogger.h"
 #include "thengine/graphics/Texture.h"
 #include "thengine/graphics/SpriteEffect.h"
+#include "thengine/graphics/BasicEffect.h"
 #include <SDL3/SDL_gpu.h>
 #include <SDL3/SDL_video.h>
 #include <cstring>
@@ -53,7 +54,7 @@ static SDL_GPUShader* loadShaderFile(SDL_GPUDevice* device, const std::string& b
   info.num_samplers = (stage == SDL_GPU_SHADERSTAGE_FRAGMENT) ? 1 : 0;
   info.num_storage_textures = 0;
   info.num_storage_buffers = 0;
-  info.num_uniform_buffers = (stage == SDL_GPU_SHADERSTAGE_VERTEX) ? 1 : 0;
+  info.num_uniform_buffers = 1; // Both vertex and fragment stages now have 1 uniform buffer
 
   return SDL_CreateGPUShader(device, &info);
 }
@@ -360,6 +361,30 @@ void Renderer::endFrame() {
       samplerBinding.texture = batch.texture->m_texture;
       samplerBinding.sampler = m_sampler;
       SDL_BindGPUFragmentSamplers(m_renderPass, 0, &samplerBinding, 1);
+
+      // Push fragment ambient constants to slot 0
+      struct AmbientConstants {
+        float r, g, b, a;
+        float intensity;
+        float padding[3];
+      } ac = {};
+
+      auto basicEffect = std::dynamic_pointer_cast<BasicEffect>(batch.effect);
+      if (basicEffect) {
+        Color col = basicEffect->getAmbientColor();
+        ac.r = static_cast<float>(col.r) / 255.0f;
+        ac.g = static_cast<float>(col.g) / 255.0f;
+        ac.b = static_cast<float>(col.b) / 255.0f;
+        ac.a = static_cast<float>(col.a) / 255.0f;
+        ac.intensity = basicEffect->getAmbientIntensity();
+      } else {
+        ac.r = 1.0f;
+        ac.g = 1.0f;
+        ac.b = 1.0f;
+        ac.a = 1.0f;
+        ac.intensity = 1.0f;
+      }
+      SDL_PushGPUFragmentUniformData(m_cmdBuf, 0, &ac, sizeof(ac));
 
       Matrix4 finalTransform = ortho * batch.transform;
 
