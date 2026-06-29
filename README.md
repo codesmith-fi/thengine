@@ -7,15 +7,20 @@ This repository serves as a practical, highly-constrained experiment in **agenti
 > [!IMPORTANT]
 > **Project Status:** Up to this point, exactly **zero manual code edits** have been made to the core engine files. Every single line is orchestrate-designed by AI under strict architectural guidelines.
 
+![thengine in action in my sandbox test application](https://i.imgur.com/rJbme2n.png)
+
 ---
 
-## Core Architecture
+## Core Architecture & Engine Features
 
-* **C++20 Pipeline:** Rigorous memory management (`std::unique_ptr` preference), `noexcept` safety, and extensive compile-time constraints using C++20 concepts.
-* **Modern Text & Unicode:** True UTF-8 rendering supporting Finnish vowels (`ä`, `ö`, `å`) using type-safe `std::string_view` interfaces and `std::format`.
-* **Transformable 2D Camera:** View space supporting independent position, zoom, and free rotation.
-* **Optimized Frustum Culling:** An inverse-matrix view-space culling pipeline to guarantee maximum rendering performance.
-* **Resource System:** Explicit `ContentManager` API for centralized loading of assets and custom shaders.
+* **Optimized Sprite Batching:** Implements an XNA-style `SpriteBatch` pipeline (`begin()` / `end()`) to minimize draw calls and optimize GPU vertex buffer allocation.
+* **Fully Transformable 2D Sprites:** Supports standard 2D sprites with full, dynamic transformation matrices (independent position, scaling, origin-point offset, and free rotation).
+* **Programmable Pipeline (GLSL Shaders):** Full support for dynamic loading and binding of custom OpenGL GLSL shaders to control runtime rendering effects.
+* **Centralized Content Pipeline:** A unified `ContentManager` system for robust, centralized resource management and seamless loading of assets (bitmaps, textures, fonts, and shaders).
+* **C++20 Type-Safety:** Built on top of the modern C++20 dialect featuring strict RAII muistinhallinta (`std::unique_ptr` enforcement), `noexcept` specifications, and `[[nodiscard]]` constraints.
+* **Modern Text & Unicode:** True UTF-8 rendering supporting Finnish vowels (`ä`, `ö`, `å`) using zero-allocation `std::string_view` interfaces and `std::format`.
+* **Dynamic 2D Camera:** Fully transformable camera tracking space supporting layout translation, zooming, and rotation.
+* **View Frustum Culling:** An optimized inverse-matrix view-space culling routine that completely bypasses off-screen objects to save hardware overhead.
 
 ---
 
