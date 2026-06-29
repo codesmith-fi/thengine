@@ -4,6 +4,7 @@
 #include "thengine/Input.h"
 #include "thengine/Renderer.h"
 #include <algorithm>
+#include <format>
 
 SandboxGame::SandboxGame(const std::string &title, int width, int height)
     : thengine::Game(title, width, height), m_hasLoggedUpdate(false),
@@ -151,7 +152,7 @@ void SandboxGame::onRender(float deltaTime) {
 
   // Draw text above player head in world space
   if (m_debugFont) {
-    m_spriteBatch->drawString(m_debugFont, "Player", m_player.getPosition() - thengine::Vector2(40.0f, 60.0f), thengine::Color(0, 0, 0, 255));
+    m_spriteBatch->drawString(m_debugFont, "Pelaaja", m_player.getPosition() - thengine::Vector2(40.0f, 60.0f), thengine::Color(0, 0, 0, 255));
   }
 
   m_spriteBatch->end();
@@ -160,15 +161,15 @@ void SandboxGame::onRender(float deltaTime) {
   if (m_debugFont) {
     m_spriteBatch->begin(m_basicEffect, thengine::Matrix4::identity());
 
-    char posBuffer[128];
-    std::snprintf(posBuffer, sizeof(posBuffer), "Player Pos: (%.2f, %.2f)", m_player.getPosition().x, m_player.getPosition().y);
-    m_spriteBatch->drawString(m_debugFont, posBuffer, thengine::Vector2(20.0f, 20.0f), thengine::Color(255, 255, 0, 255));
+    std::string posStr = std::format("Pelaajan Sijainti: ({:.2f}, {:.2f})", m_player.getPosition().x, m_player.getPosition().y);
+    m_spriteBatch->drawString(m_debugFont, posStr, thengine::Vector2(20.0f, 20.0f), thengine::Color(255, 255, 0, 255));
 
-    char camBuffer[128];
-    std::snprintf(camBuffer, sizeof(camBuffer), "Camera Zoom: %.2f | Rot: %.2f", m_camera.zoom, m_camera.rotation);
-    m_spriteBatch->drawString(m_debugFont, camBuffer, thengine::Vector2(20.0f, 50.0f), thengine::Color(255, 255, 255, 255));
+    std::string camStr = std::format("Kamera Zoomaus: {:.2f} | Kierto: {:.2f}", m_camera.zoom, m_camera.rotation);
+    m_spriteBatch->drawString(m_debugFont, camStr, thengine::Vector2(20.0f, 50.0f), thengine::Color(255, 255, 255, 255));
 
-    m_spriteBatch->drawString(m_debugFont, "Controls: WASD=Move | Up/Down=Zoom | Left/Right=Rotate | ESC=Exit", 
+    m_spriteBatch->drawString(m_debugFont, "Ääkköstesti: Hyvää päivää! Åäö", thengine::Vector2(20.0f, 80.0f), thengine::Color(255, 100, 255, 255));
+
+    m_spriteBatch->drawString(m_debugFont, "Ohjaus: WASD=Liiku | Ylös/Alas=Zoomaus | Vasen/Oikea=Kierto | ESC=Poistu", 
                               thengine::Vector2(20.0f, static_cast<float>(WINDOW_HEIGHT) - 40.0f), thengine::Color(0, 255, 0, 255));
 
     m_spriteBatch->end();

@@ -34,16 +34,21 @@ project_root/
 - Use folder "include/thengine/" for externally usable and sandbox-facing classes like Game.
 
 ## Core Design Principles (Follow Strictly)
-- **Programming Language** Modern C++17
-- **Memory management**: Strong RAII principle and smart pointers (std::unique_ptr preferred, std::shared_ptr only when truly needed)
-- **Modularity**: Every major subsystem must live in its own folder under "engine/src/"
+
+- **Programming Language**: Target the code for modern C++20 support wherever possible (`-std=c++20` / `/std:c++20`).
+  - Prefer C++20 `std::format` over legacy C-style `snprintf` or heavy `std::stringstream` for string formatting.
+  - Utilize `std::string_view` for zero-allocation string passing in APIs and prefer uniform UTF-8 handling over `wchar_t`.
+  - Use C++20 Concepts (`requires` clauses) to constrain templates instead of legacy SFINAE / `std::enable_if` where appropriate.
+- **Memory Management**: Strong RAII principle and smart pointers (`std::unique_ptr` preferred, `std::shared_ptr` only when truly needed).
+- **Modularity**: Every major subsystem must live in its own folder under "engine/src/".
 - **Patterns**: OO design using common patterns (Factory, Observer, Component, etc.).
-- **Dependencies**: Prefer composition over inheritance when reasonable
-- Clean separation between public interface (include/) and implementation (src/)
-- **Performance**: Prefer move semantics and avoid unnecessary copies
-- **Data Types**: Use standard containers (std::vector, std::unordered_map etc.)
-- **Variables**: Extensive use of const, noexcept and [[nodiscard]] where appropriate
-- **Interface/API**: Keep public API clean, minimal and well-documented
+- **Dependencies**: Prefer composition over inheritance when reasonable.
+- **Structure**: Clean separation between public interface (include/) and implementation (src/).
+- **Performance**: Prefer move semantics, leverage modern C++ rvalue references, and avoid unnecessary copies.
+- **Data Types**: Use standard containers (`std::vector`, `std::unordered_map` etc.).
+- **Variables & Functions**: Extensive use of `const`, `noexcept`, and `[[nodiscard]]` where appropriate.
+- **Interface/API**: Keep public API clean, minimal, type-safe, and well-documented.
+- **When not sure**: Always prefer asking for guidance when there're uncertainties in how to implement.
 
 ## SDL3 Development Guidelines
 - Never expose **SDL3** from thengine. Wrap SDL3 types in your own types. For example, don't have a class that returns a raw `SDL_GPUTexture` pointer. Return a `Texture` object or a wrapper.

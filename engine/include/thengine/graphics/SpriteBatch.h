@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <memory>
-#include <string>
+#include <string_view>
 #include "thengine/primitives/Vector2.h"
 #include "thengine/primitives/Color.h"
 #include "thengine/primitives/Rectangle.h"
@@ -57,7 +57,7 @@ public:
               float depth = 0.0f);
               
     void drawString(const std::shared_ptr<SpriteFont>& font,
-                    const std::string& text,
+                    std::string_view text,
                     const Vector2& position,
                     const Color& color = {255, 255, 255, 255},
                     float rotation = 0.0f,

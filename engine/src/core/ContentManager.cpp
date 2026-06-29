@@ -277,7 +277,7 @@ std::shared_ptr<SpriteFont> ContentManager::loadFont(const std::string& path, fl
     std::vector<uint8_t> atlasPixels(atlasWidth * atlasHeight, 0);
 
     stbtt_pack_context packContext;
-    stbtt_packedchar packedChars[96];
+    stbtt_packedchar packedChars[256];
 
     if (!stbtt_PackBegin(&packContext, atlasPixels.data(), atlasWidth, atlasHeight, 0, 1, nullptr)) {
         LOG_ERROR() << "Failed to initialize stb_truetype packing context";
@@ -288,7 +288,7 @@ std::shared_ptr<SpriteFont> ContentManager::loadFont(const std::string& path, fl
     range.font_size = fontSize;
     range.first_unicode_codepoint_in_range = 32;
     range.array_of_unicode_codepoints = nullptr;
-    range.num_chars = 96;
+    range.num_chars = 256;
     range.chardata_for_range = packedChars;
     range.h_oversample = 1;
     range.v_oversample = 1;
@@ -374,9 +374,9 @@ std::shared_ptr<SpriteFont> ContentManager::loadFont(const std::string& path, fl
 
     auto texture = std::shared_ptr<Texture>(new Texture(device, gpuTexture, atlasWidth, atlasHeight, path + "_atlas"));
 
-    std::unordered_map<char, GlyphInfo> glyphs;
-    for (int i = 0; i < 96; ++i) {
-        char c = static_cast<char>(32 + i);
+    std::unordered_map<uint32_t, GlyphInfo> glyphs;
+    for (int i = 0; i < 256; ++i) {
+        uint32_t c = 32 + i;
         const auto& pc = packedChars[i];
 
         GlyphInfo glyph;

@@ -6,6 +6,49 @@
 #include <algorithm>
 #include <cmath>
 
+namespace {
+
+// Helper function to decode UTF-8 bytes to UTF-32 codepoints
+inline uint32_t decodeNextUtf8(std::string_view::const_iterator& it, std::string_view::const_iterator end) {
+    if (it == end) return 0;
+    uint8_t cp = static_cast<uint8_t>(*it);
+    ++it;
+
+    if (cp < 0x80) {
+        return cp;
+    } else if ((cp & 0xE0) == 0xC0) {
+        if (it == end) return 0;
+        uint32_t val = (cp & 0x1F) << 6;
+        val |= (static_cast<uint8_t>(*it) & 0x3F);
+        ++it;
+        return val;
+    } else if ((cp & 0xF0) == 0xE0) {
+        if (it == end) return 0;
+        uint32_t val = (cp & 0x0F) << 12;
+        val |= (static_cast<uint8_t>(*it) & 0x3F) << 6;
+        ++it;
+        if (it == end) return 0;
+        val |= (static_cast<uint8_t>(*it) & 0x3F);
+        ++it;
+        return val;
+    } else if ((cp & 0xF8) == 0xF0) {
+        if (it == end) return 0;
+        uint32_t val = (cp & 0x07) << 18;
+        val |= (static_cast<uint8_t>(*it) & 0x3F) << 12;
+        ++it;
+        if (it == end) return 0;
+        val |= (static_cast<uint8_t>(*it) & 0x3F) << 6;
+        ++it;
+        if (it == end) return 0;
+        val |= (static_cast<uint8_t>(*it) & 0x3F);
+        ++it;
+        return val;
+    }
+    return '?'; // Fallback for invalid UTF-8
+}
+
+} // namespace
+
 namespace thengine {
 
 SpriteBatch::SpriteBatch(Renderer& renderer) : m_renderer(renderer), m_isBegun(false) {}
@@ -47,7 +90,7 @@ void SpriteBatch::draw(std::shared_ptr<Texture> texture,
 }
 
 void SpriteBatch::drawString(const std::shared_ptr<SpriteFont>& font,
-                             const std::string& text,
+                             std::string_view text,
                              const Vector2& position,
                              const Color& color,
                              float rotation,
@@ -58,14 +101,19 @@ void SpriteBatch::drawString(const std::shared_ptr<SpriteFont>& font,
 
     Vector2 cursorOffset(0.0f, 0.0f);
 
-    for (char c : text) {
-        if (c == '\n') {
+    auto it = text.begin();
+    auto end = text.end();
+    while (it != end) {
+        uint32_t codepoint = decodeNextUtf8(it, end);
+        if (codepoint == 0) break;
+
+        if (codepoint == '\n') {
             cursorOffset.x = 0.0f;
             cursorOffset.y += font->getSize();
             continue;
         }
 
-        const GlyphInfo* glyph = font->getGlyph(c);
+        const GlyphInfo* glyph = font->getGlyph(codepoint);
         if (glyph) {
             Vector2 offset = cursorOffset + Vector2(glyph->offsetX, glyph->offsetY);
 
@@ -81,8 +129,7 @@ void SpriteBatch::drawString(const std::shared_ptr<SpriteFont>& font,
                 offset.y *= scale.y;
             }
 
-            // Draw the glyph. We pass origin (0, 0) because the offset already defines the position
-            // relative to the string baseline.
+            // Draw the glyph
             draw(font->getTexture(), position + offset - origin, glyph->sourceRect, scale, rotation, {0.0f, 0.0f}, color, depth);
 
             cursorOffset.x += glyph->advanceX;
