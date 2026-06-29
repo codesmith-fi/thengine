@@ -8,6 +8,7 @@
 #include "thengine/graphics/Texture.h"
 #include "thengine/graphics/SpriteBatch.h"
 #include "thengine/graphics/SpriteFont.h"
+#include "thengine/FpsCounter.h"
 #include <array>
 #include <memory>
 #include <string>
@@ -45,4 +46,5 @@ private:
   std::shared_ptr<thengine::BasicEffect> m_basicEffect;
   std::shared_ptr<thengine::SpriteFont> m_debugFont;
   thengine::Camera2D m_camera;
+  thengine::FpsCounter m_fpsCounter;
 };

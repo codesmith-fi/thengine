@@ -83,6 +83,8 @@ bool SandboxGame::onUpdate(float deltaTime) {
     m_hasLoggedUpdate = true;
   }
 
+  m_fpsCounter.update(deltaTime);
+
   if (thengine::Input::isKeyPressed(thengine::Key::Escape)) {
     LOG_INFO() << "ESCAPE pressed, exiting sandbox.";
     return false;
@@ -185,6 +187,11 @@ void SandboxGame::onRender(float deltaTime) {
 
     m_spriteBatch->drawString(m_debugFont, "Ohjaus: WASD=Liiku | Ylös/Alas=Zoomaus | Vasen/Oikea=Kierto | ESC=Poistu", 
                               thengine::Vector2(20.0f, static_cast<float>(WINDOW_HEIGHT) - 40.0f), thengine::Color(0, 255, 0, 255));
+
+    // Draw FPS in the top right corner
+    std::string fpsStr = std::format("FPS: {:.1f}", m_fpsCounter.getFps());
+    thengine::Vector2 size = m_debugFont->measureString(fpsStr);
+    m_spriteBatch->drawString(m_debugFont, fpsStr, thengine::Vector2(static_cast<float>(WINDOW_WIDTH) - size.x - 20.0f, 20.0f), thengine::Color(0, 255, 255, 255));
 
     m_spriteBatch->end();
   }

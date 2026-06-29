@@ -7,6 +7,7 @@ target_sources(thengine PRIVATE
     src/core/Game.cpp
     src/core/Entity.cpp
     src/core/ContentManager.cpp
+    src/core/FpsCounter.cpp
     src/input/Input.cpp
     src/graphics/Renderer.cpp
     src/graphics/Sprite.cpp
