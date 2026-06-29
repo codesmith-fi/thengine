@@ -21,6 +21,7 @@ struct SDL_GPUBuffer;
 struct SDL_GPUSampler;
 struct SDL_GPUShader;
 struct SDL_GPUTransferBuffer;
+struct SDL_GPUFence;
 
 namespace thengine {
 
@@ -73,13 +74,15 @@ private:
 
   static constexpr size_t NUM_FRAMES = 3;
   static constexpr size_t MAX_VERTICES_PER_FRAME = 60000;
+  static constexpr size_t MAX_VERTICES = NUM_FRAMES * MAX_VERTICES_PER_FRAME;
 
   SDL_GPUGraphicsPipeline *m_spritePipeline = nullptr;
-  SDL_GPUBuffer *m_vertexBuffers[NUM_FRAMES] = {};
-  SDL_GPUTransferBuffer *m_transferBuffers[NUM_FRAMES] = {};
+  SDL_GPUBuffer *m_vertexBuffer = nullptr;
+  SDL_GPUTransferBuffer *m_transferBuffer = nullptr;
   SDL_GPUSampler *m_sampler = nullptr;
+  SDL_GPUFence *m_fences[NUM_FRAMES] = {};
   size_t m_vertexOffset = 0;
-  size_t m_frameIndex = 0;
+  size_t m_currentFrameIndex = 0;
 
   std::unordered_map<int, std::shared_ptr<SpriteEffect>> m_Effects;
 
