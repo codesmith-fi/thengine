@@ -196,43 +196,15 @@ void Renderer::initPipeline() {
 
   SDL_GPUBufferCreateInfo bufferInfo = {};
   bufferInfo.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
-  bufferInfo.size = sizeof(Vertex) * 4;
+  bufferInfo.size = sizeof(Vertex) * MAX_VERTICES;
 
   m_vertexBuffer = SDL_CreateGPUBuffer(m_device, &bufferInfo);
 
-  Vertex quad[4] = {{0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f},
-                    {1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f},
-                    {0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
-                    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f}};
-
   SDL_GPUTransferBufferCreateInfo tbInfo = {};
   tbInfo.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
-  tbInfo.size = sizeof(quad);
+  tbInfo.size = sizeof(Vertex) * MAX_VERTICES;
 
-  SDL_GPUTransferBuffer *tb = SDL_CreateGPUTransferBuffer(m_device, &tbInfo);
-  void *map = SDL_MapGPUTransferBuffer(m_device, tb, false);
-  if (map) {
-    std::memcpy(map, quad, sizeof(quad));
-    SDL_UnmapGPUTransferBuffer(m_device, tb);
-
-    SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(m_device);
-    SDL_GPUCopyPass *copy = SDL_BeginGPUCopyPass(cmd);
-
-    SDL_GPUTransferBufferLocation srcLoc = {};
-    srcLoc.transfer_buffer = tb;
-    srcLoc.offset = 0;
-
-    SDL_GPUBufferRegion dstReg = {};
-    dstReg.buffer = m_vertexBuffer;
-    dstReg.offset = 0;
-    dstReg.size = sizeof(quad);
-
-    SDL_UploadToGPUBuffer(copy, &srcLoc, &dstReg, false);
-    SDL_EndGPUCopyPass(copy);
-    SDL_SubmitGPUCommandBuffer(cmd);
-  }
-
-  SDL_ReleaseGPUTransferBuffer(m_device, tb);
+  m_transferBuffer = SDL_CreateGPUTransferBuffer(m_device, &tbInfo);
 
   SDL_GPUSamplerCreateInfo samplerInfo = {};
   samplerInfo.min_filter = SDL_GPU_FILTER_NEAREST;
@@ -260,11 +232,17 @@ void Renderer::cleanupPipeline() {
     SDL_ReleaseGPUBuffer(m_device, m_vertexBuffer);
     m_vertexBuffer = nullptr;
   }
+  if (m_transferBuffer) {
+    SDL_ReleaseGPUTransferBuffer(m_device, m_transferBuffer);
+    m_transferBuffer = nullptr;
+  }
 }
 
 bool Renderer::beginFrame() {
   if (!m_device)
     return false;
+
+  m_vertexOffset = 0;
 
   m_cmdBuf = SDL_AcquireGPUCommandBuffer(m_device);
   if (!m_cmdBuf)
@@ -324,35 +302,33 @@ void Renderer::drawBatched(std::shared_ptr<Texture> texture,
   if (!m_cmdBuf || !texture || vertexCount == 0)
     return;
 
+  if (m_vertexOffset + vertexCount > MAX_VERTICES) {
+    LOG_WARN() << "Vertex buffer streaming limit reached, wrapping around! Current offset: " 
+                  << m_vertexOffset << ", required: " << vertexCount;
+    m_vertexOffset = 0;
+  }
+
   if (m_renderPass) {
     SDL_EndGPURenderPass(m_renderPass);
     m_renderPass = nullptr;
   }
 
-  // 1. Upload dynamic vertex data using a transfer buffer
-  SDL_GPUTransferBufferCreateInfo tbInfo = {};
-  tbInfo.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
-  tbInfo.size = vertexCount * sizeof(Vertex);
-  SDL_GPUTransferBuffer *tb = SDL_CreateGPUTransferBuffer(m_device, &tbInfo);
-
-  void *map = SDL_MapGPUTransferBuffer(m_device, tb, false);
+  // 1. Upload dynamic vertex data using the pre-allocated transfer buffer
+  void *map = SDL_MapGPUTransferBuffer(m_device, m_transferBuffer, false);
   if (map) {
-    std::memcpy(map, vertices, vertexCount * sizeof(Vertex));
-    SDL_UnmapGPUTransferBuffer(m_device, tb);
+    std::memcpy(static_cast<char*>(map) + (m_vertexOffset * sizeof(Vertex)),
+                vertices,
+                vertexCount * sizeof(Vertex));
+    SDL_UnmapGPUTransferBuffer(m_device, m_transferBuffer);
 
     SDL_GPUCopyPass *copy = SDL_BeginGPUCopyPass(m_cmdBuf);
     SDL_GPUTransferBufferLocation srcLoc = {};
-    srcLoc.transfer_buffer = tb;
-    srcLoc.offset = 0;
-
-    SDL_GPUBufferCreateInfo vInfo = {};
-    vInfo.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
-    vInfo.size = vertexCount * sizeof(Vertex);
-    SDL_GPUBuffer *vBuf = SDL_CreateGPUBuffer(m_device, &vInfo);
+    srcLoc.transfer_buffer = m_transferBuffer;
+    srcLoc.offset = m_vertexOffset * sizeof(Vertex);
 
     SDL_GPUBufferRegion dstReg = {};
-    dstReg.buffer = vBuf;
-    dstReg.offset = 0;
+    dstReg.buffer = m_vertexBuffer;
+    dstReg.offset = m_vertexOffset * sizeof(Vertex);
     dstReg.size = vertexCount * sizeof(Vertex);
 
     SDL_UploadToGPUBuffer(copy, &srcLoc, &dstReg, false);
@@ -381,8 +357,8 @@ void Renderer::drawBatched(std::shared_ptr<Texture> texture,
     SDL_SetGPUViewport(m_renderPass, &viewport);
 
     SDL_GPUBufferBinding vertexBinding = {};
-    vertexBinding.buffer = vBuf;
-    vertexBinding.offset = 0;
+    vertexBinding.buffer = m_vertexBuffer;
+    vertexBinding.offset = m_vertexOffset * sizeof(Vertex);
     SDL_BindGPUVertexBuffers(m_renderPass, 0, &vertexBinding, 1);
 
     SDL_GPUTextureSamplerBinding samplerBinding = {};
@@ -407,10 +383,8 @@ void Renderer::drawBatched(std::shared_ptr<Texture> texture,
     // 5. Draw the entire batch
     SDL_DrawGPUPrimitives(m_renderPass, vertexCount, 1, 0, 0);
 
-    // 6. Release temporary buffers (SDL_GPU handles deferred destruction
-    // safely)
-    SDL_ReleaseGPUBuffer(m_device, vBuf);
-    SDL_ReleaseGPUTransferBuffer(m_device, tb);
+    // Advance offset
+    m_vertexOffset += vertexCount;
   }
 }
 
