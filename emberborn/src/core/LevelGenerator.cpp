@@ -8,10 +8,10 @@ void LevelGenerator::generateBasicLayout(TileMap& tileMap, int minRoomSize, int 
 	int mapWidth = tileMap.getWidth();
 	int mapHeight = tileMap.getHeight();
 
-	// 1. Initialize entire map with Wall tiles
+	// 1. Initialize entire map with Void tiles (instead of Walls)
 	for (int y = 0; y < mapHeight; ++y) {
 		for (int x = 0; x < mapWidth; ++x) {
-			tileMap.setTile(x, y, Tile::TileType::Wall);
+			tileMap.setTile(x, y, Tile::TileType::Void);
 		}
 	}
 
@@ -36,48 +36,118 @@ void LevelGenerator::generateBasicLayout(TileMap& tileMap, int minRoomSize, int 
 
 	int prevCenterX = 0;
 	int prevCenterY = 0;
+	int roomsCarved = 0;
 
 	// 3. Iterative room carving loop
 	for (int i = 0; i < maxRooms; ++i) {
-		int roomW = widthDist(gen);
-		int roomH = heightDist(gen);
+		int roomW = 0;
+		int roomH = 0;
+		int roomX = 0;
+		int roomY = 0;
+		bool foundValidSpace = false;
 
-		std::uniform_int_distribution<int> xDist(1, mapWidth - roomW - 2);
-		std::uniform_int_distribution<int> yDist(1, mapHeight - roomH - 2);
+		// Retry up to 100 times to find a non-overlapping spot
+		for (int attempt = 0; attempt < 100; ++attempt) {
+			roomW = widthDist(gen);
+			roomH = heightDist(gen);
 
-		int roomX = xDist(gen);
-		int roomY = yDist(gen);
+			std::uniform_int_distribution<int> xDist(1, mapWidth - roomW - 2);
+			std::uniform_int_distribution<int> yDist(1, mapHeight - roomH - 2);
+
+			roomX = xDist(gen);
+			roomY = yDist(gen);
+
+			// Check area with 1-tile padding boundary (x - 1 to x + width and y - 1 to y + height)
+			bool hasOverlap = false;
+			int startCheckX = std::max(0, roomX - 1);
+			int endCheckX = std::min(mapWidth - 1, roomX + roomW);
+			int startCheckY = std::max(0, roomY - 1);
+			int endCheckY = std::min(mapHeight - 1, roomY + roomH);
+
+			for (int checkY = startCheckY; checkY <= endCheckY; ++checkY) {
+				for (int checkX = startCheckX; checkX <= endCheckX; ++checkX) {
+					if (tileMap.getTile(checkX, checkY).type == Tile::TileType::Floor) {
+						hasOverlap = true;
+						break;
+					}
+				}
+				if (hasOverlap) {
+					break;
+				}
+			}
+
+			if (!hasOverlap) {
+				foundValidSpace = true;
+				break;
+			}
+		}
+
+		// If no valid space was found, skip carving this room
+		if (!foundValidSpace) {
+			continue;
+		}
 
 		int currentCenterX = roomX + roomW / 2;
 		int currentCenterY = roomY + roomH / 2;
 
-		// Carve current room to Floor
-		for (int y = roomY; y < roomY + roomH; ++y) {
-			for (int x = roomX; x < roomX + roomW; ++x) {
-				tileMap.setTile(x, y, Tile::TileType::Floor);
+		// 4. Carve current room to Floor and surround it with Walls (where Void)
+		for (int y = roomY - 1; y <= roomY + roomH; ++y) {
+			for (int x = roomX - 1; x <= roomX + roomW; ++x) {
+				if (tileMap.inBounds(x, y)) {
+					// Inside the room boundaries -> carve Floor
+					if (x >= roomX && x < roomX + roomW && y >= roomY && y < roomY + roomH) {
+						tileMap.setTile(x, y, Tile::TileType::Floor);
+					} else {
+						// Outer boundary -> set to Wall only if currently Void (never overwrite existing Floor)
+						if (tileMap.getTile(x, y).type == Tile::TileType::Void) {
+							tileMap.setTile(x, y, Tile::TileType::Wall);
+						}
+					}
+				}
 			}
 		}
 
-		// If this is not the first room, connect it to the previous room
-		if (i > 0) {
-			// Horizontal corridor: travel from currentCenterX to prevCenterX at currentCenterY
+		// 5. Connect room to the previous one with L-shaped corridor if it's not the first one
+		if (roomsCarved > 0) {
+			// Horizontal corridor step: travel from currentCenterX to prevCenterX at currentCenterY
 			int startX = std::min(currentCenterX, prevCenterX);
 			int endX = std::max(currentCenterX, prevCenterX);
 			for (int x = startX; x <= endX; ++x) {
 				tileMap.setTile(x, currentCenterY, Tile::TileType::Floor);
+
+				// Add wall borders above and below the horizontal path if they are Void
+				for (int dy : {-1, 1}) {
+					int ny = currentCenterY + dy;
+					if (tileMap.inBounds(x, ny)) {
+						if (tileMap.getTile(x, ny).type == Tile::TileType::Void) {
+							tileMap.setTile(x, ny, Tile::TileType::Wall);
+						}
+					}
+				}
 			}
 
-			// Vertical corridor: travel from currentCenterY to prevCenterY at prevCenterX
+			// Vertical corridor step: travel from currentCenterY to prevCenterY at prevCenterX
 			int startY = std::min(currentCenterY, prevCenterY);
 			int endY = std::max(currentCenterY, prevCenterY);
 			for (int y = startY; y <= endY; ++y) {
 				tileMap.setTile(prevCenterX, y, Tile::TileType::Floor);
+
+				// Add wall borders to the left and right of the vertical path if they are Void
+				for (int dx : {-1, 1}) {
+					int nx = prevCenterX + dx;
+					if (tileMap.inBounds(nx, y)) {
+						if (tileMap.getTile(nx, y).type == Tile::TileType::Void) {
+							tileMap.setTile(nx, y, Tile::TileType::Wall);
+						}
+					}
+				}
 			}
 		}
 
-		// Update previous centers for the next iteration
+		// Update previous centers and count of carved rooms
 		prevCenterX = currentCenterX;
 		prevCenterY = currentCenterY;
+		roomsCarved++;
 	}
 }
 
