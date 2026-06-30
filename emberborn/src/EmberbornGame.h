@@ -57,5 +57,10 @@ private:
 	thengine::VisibilityPolygon m_playerVisibility;
 	std::shared_ptr<thengine::Texture> m_pixelTex;
 
+	float m_torchTime = 0.0f;
+	float m_currentTorchRadius = 400.0f;
+	float m_targetTorchRadius = 400.0f;
+	float m_crackleTimer = 0.0f;
+
 	void drawLine(thengine::SpriteBatch& spriteBatch, const thengine::Vector2& start, const thengine::Vector2& end, const thengine::Color& color);
 };

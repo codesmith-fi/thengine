@@ -165,13 +165,30 @@ bool EmberbornGame::onUpdate(float deltaTime) {
 		m_playerController->update(deltaTime, m_tileMap);
 	}
 
-	// Calculate player visibility polygon for torch light
+	// Update torch flicker effect
+	m_torchTime += deltaTime * 6.0f;
+	float baseNoise = std::sin(m_torchTime) * 8.0f;
+
+	m_crackleTimer += deltaTime;
+	if (m_crackleTimer >= 0.1f) {
+		m_crackleTimer = 0.0f;
+		float randVal = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+		m_targetTorchRadius = 385.0f + randVal * 30.0f;
+	}
+
+	float lerpFactor = 15.0f * deltaTime;
+	if (lerpFactor > 1.0f) {
+		lerpFactor = 1.0f;
+	}
+	m_currentTorchRadius = m_currentTorchRadius + (m_targetTorchRadius + baseNoise - m_currentTorchRadius) * lerpFactor;
+
+	// Calculate player visibility polygon for torch light using dynamic radius
 	if (m_player) {
 		thengine::Vector2 playerPos(
 			static_cast<float>(m_player->getX()) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f,
 			static_cast<float>(m_player->getY()) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f
 		);
-		m_playerVisibility = thengine::VisibilitySolver::calculateVisibility(playerPos, 400.0f, m_tileMap);
+		m_playerVisibility = thengine::VisibilitySolver::calculateVisibility(playerPos, m_currentTorchRadius, m_tileMap);
 	}
 
 	// Tick monster controller
@@ -268,11 +285,18 @@ void EmberbornGame::onRender(float deltaTime) {
 		std::vector<thengine::Vertex> lightVertices;
 		lightVertices.reserve(count * 3);
 
+		// Alpha/Intensity Modulation based on radius fluctuation
+		float ratio = m_currentTorchRadius / 400.0f;
+		float alphaScale = ratio * ratio; // quadratic flicker intensity
+		if (alphaScale > 1.5f) {
+			alphaScale = 1.5f;
+		}
+
 		float cR = 255.0f / 255.0f;
 		float cG = 200.0f / 255.0f;
 		float cB = 50.0f / 255.0f;
-		float cA_center = 70.0f / 255.0f; // warm bright center
-		float cA_outer = 15.0f / 255.0f;  // soft outer edge fade
+		float cA_center = (70.0f / 255.0f) * alphaScale; // warm bright center
+		float cA_outer = (15.0f / 255.0f) * alphaScale;  // soft outer edge fade
 
 		for (size_t i = 0; i < count; ++i) {
 			const auto& vCurrent = vertices[i];
