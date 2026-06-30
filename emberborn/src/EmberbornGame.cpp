@@ -263,12 +263,6 @@ void EmberbornGame::onRender(float deltaTime) {
 		static_cast<float>(emberborn::WINDOW_HEIGHT),
 		emberborn::TILE_SIZE
 	);
-	m_entityRenderer.render(
-		*m_spriteBatch,
-		m_entities,
-		emberborn::TILE_SIZE
-	);
-
 	m_spriteBatch->end();
 
 	// Draw player visibility warm light fan and midnight blue ambient shadow mask overlay
@@ -295,16 +289,35 @@ void EmberbornGame::onRender(float deltaTime) {
 		float cR = 255.0f / 255.0f;
 		float cG = 200.0f / 255.0f;
 		float cB = 50.0f / 255.0f;
-		float cA_center = (70.0f / 255.0f) * alphaScale; // warm bright center
-		float cA_outer = (15.0f / 255.0f) * alphaScale;  // soft outer edge fade
+		float cA_center = (100.0f / 255.0f) * alphaScale; // soft warm center
 
 		for (size_t i = 0; i < count; ++i) {
 			const auto& vCurrent = vertices[i];
 			const auto& vNext = vertices[(i + 1) % count];
 
+			// Calculate distance and attenuation for vCurrent
+			float dx1 = vCurrent.x - playerPos.x;
+			float dy1 = vCurrent.y - playerPos.y;
+			float d1 = std::sqrt(dx1 * dx1 + dy1 * dy1);
+			float ratio1 = d1 / m_currentTorchRadius;
+			float att1 = (1.0f - ratio1) / 0.85f;
+			att1 = std::max(0.0f, std::min(1.0f, att1));
+			att1 = att1 * att1 * att1; // cubic smooth curves
+			float cA_curr = (100.0f / 255.0f) * att1 * alphaScale;
+
+			// Calculate distance and attenuation for vNext
+			float dx2 = vNext.x - playerPos.x;
+			float dy2 = vNext.y - playerPos.y;
+			float d2 = std::sqrt(dx2 * dx2 + dy2 * dy2);
+			float ratio2 = d2 / m_currentTorchRadius;
+			float att2 = (1.0f - ratio2) / 0.85f;
+			att2 = std::max(0.0f, std::min(1.0f, att2));
+			att2 = att2 * att2 * att2; // cubic smooth curves
+			float cA_nxt = (100.0f / 255.0f) * att2 * alphaScale;
+
 			thengine::Vertex vCenter = { playerPos.x, playerPos.y, 0.0f, 0.0f, cR, cG, cB, cA_center };
-			thengine::Vertex vCurr = { vCurrent.x, vCurrent.y, 0.0f, 0.0f, cR, cG, cB, cA_outer };
-			thengine::Vertex vNxt = { vNext.x, vNext.y, 0.0f, 0.0f, cR, cG, cB, cA_outer };
+			thengine::Vertex vCurr = { vCurrent.x, vCurrent.y, 0.0f, 0.0f, cR, cG, cB, cA_curr };
+			thengine::Vertex vNxt = { vNext.x, vNext.y, 0.0f, 0.0f, cR, cG, cB, cA_nxt };
 
 			lightVertices.push_back(vCenter);
 			lightVertices.push_back(vCurr);
@@ -372,19 +385,18 @@ void EmberbornGame::onRender(float deltaTime) {
 		getRenderer().drawBatched(m_pixelTex, shadowVertices.data(), shadowVertices.size(), m_basicEffect, cameraTransform);
 	}
 
+	// Render dynamic entities on top of the fully lit/darkened world (Layer 3: Entities & Foreground)
+	m_spriteBatch->begin(m_basicEffect, cameraTransform);
+	m_entityRenderer.render(
+		*m_spriteBatch,
+		m_entities,
+		emberborn::TILE_SIZE
+	);
+	m_spriteBatch->end();
+
 	// Draw HUD overlay in screen space
 	if (m_font) {
 		m_spriteBatch->begin(m_basicEffect, thengine::Matrix4::identity());
-
-		std::string text = "Welcome... to hell";
-		thengine::Vector2 size = m_font->measureString(text);
-		thengine::Vector2 position(
-			(static_cast<float>(emberborn::WINDOW_WIDTH) - size.x) * 0.5f,
-			(static_cast<float>(emberborn::WINDOW_HEIGHT) - size.y) * 0.5f
-		);
-
-		// Deep red/crimson colored warning text
-		m_spriteBatch->drawString(m_font, text, position, thengine::Color(200, 30, 30, 255));
 
 		// Draw FPS in the top right corner
 		std::string fpsStr = std::format("FPS: {:.1f}", m_fpsCounter.getFps());
