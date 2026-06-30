@@ -7,6 +7,7 @@ Entity::Entity()
     , m_gridY(0)
     , m_hitPoints(100)
     , m_experiencePoints(0)
-    , m_type(EntityType::Skeleton) {}
+    , m_type(EntityType::Skeleton)
+    , m_speed(1.0f) {}
 
 } // namespace emberborn

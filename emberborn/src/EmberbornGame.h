@@ -19,6 +19,7 @@ namespace emberborn {
 class Entity;
 class PlayerEntity;
 class PlayerController;
+class MonsterController;
 }
 
 class EmberbornGame : public thengine::Game {
@@ -49,4 +50,6 @@ private:
 	std::vector<std::shared_ptr<emberborn::Entity>> m_entities;
 	std::unique_ptr<emberborn::PlayerController> m_playerController;
 	std::shared_ptr<emberborn::PlayerEntity> m_player;
+	std::shared_ptr<emberborn::Entity> m_monster;
+	std::unique_ptr<emberborn::MonsterController> m_monsterController;
 };

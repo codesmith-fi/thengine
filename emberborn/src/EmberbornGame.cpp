@@ -8,6 +8,7 @@
 #include "entity/Entity.h"
 #include "entity/PlayerEntity.h"
 #include "entity/PlayerController.h"
+#include "entity/MonsterController.h"
 #include "entity/EntityRenderer.h"
 #include <unordered_map>
 #include <format>
@@ -106,6 +107,45 @@ void EmberbornGame::onLoadContent() {
 	} else {
 		LOG_ERROR() << "Failed to find a valid spawn tile for the player.";
 	}
+
+	// Find a different floor tile for the monster
+	int monsterX = -1, monsterY = -1;
+	for (int y = m_tileMap.getHeight() - 1; y >= 0; --y) {
+		for (int x = m_tileMap.getWidth() - 1; x >= 0; --x) {
+			if (m_tileMap.getTile(x, y).type == emberborn::Tile::TileType::Floor) {
+				if (x != startX || y != startY) {
+					monsterX = x;
+					monsterY = y;
+					break;
+				}
+			}
+		}
+		if (monsterX != -1) break;
+	}
+
+	// Load skeleton texture and register it
+	auto skeletonTex = m_content->load<thengine::Texture>("assets/test1.png");
+	if (skeletonTex) {
+		m_entityRenderer.registerTexture(emberborn::EntityType::Skeleton, skeletonTex);
+		LOG_INFO() << "Loaded and registered skeleton texture.";
+	} else {
+		LOG_ERROR() << "Failed to load skeleton texture.";
+	}
+
+	if (monsterX != -1 && monsterY != -1) {
+		m_monster = std::make_shared<emberborn::Entity>();
+		m_monster->setType(emberborn::EntityType::Skeleton);
+		m_monster->setX(monsterX);
+		m_monster->setY(monsterY);
+		m_monster->setSpeed(0.5f); // slow skeleton
+		m_entities.push_back(m_monster);
+
+		m_monsterController = std::make_unique<emberborn::MonsterController>();
+		m_monsterController->possess(m_monster.get());
+		LOG_INFO() << "Monster spawned at: " << monsterX << ", " << monsterY;
+	} else {
+		LOG_ERROR() << "Failed to find a valid spawn tile for the monster.";
+	}
 }
 
 bool EmberbornGame::onUpdate(float deltaTime) {
@@ -116,27 +156,30 @@ bool EmberbornGame::onUpdate(float deltaTime) {
 		m_playerController->update(deltaTime, m_tileMap);
 	}
 
+	// Tick monster controller
+	if (m_monsterController) {
+		m_monsterController->update(deltaTime, m_tileMap);
+	}
+
 	if (thengine::Input::isKeyPressed(thengine::Key::Escape)) {
 		LOG_INFO() << "ESCAPE pressed, exiting Emberborn.";
 		return false;
 	}
 
-	// Camera movement controls
-	float speed = 400.0f;
-	thengine::Vector2 camPos = m_camera.getPosition();
-	if (thengine::Input::isKeyPressed(thengine::Key::W)) {
-		camPos.y -= speed * deltaTime;
+	// Smooth camera follow player position
+	if (m_player) {
+		thengine::Vector2 targetPos(
+			static_cast<float>(m_player->getX()) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f,
+			static_cast<float>(m_player->getY()) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f
+		);
+		thengine::Vector2 currentPos = m_camera.getPosition();
+		float lerpFactor = 10.0f * deltaTime;
+		if (lerpFactor > 1.0f) {
+			lerpFactor = 1.0f;
+		}
+		thengine::Vector2 newPos = currentPos + (targetPos - currentPos) * lerpFactor;
+		m_camera.setPosition(newPos);
 	}
-	if (thengine::Input::isKeyPressed(thengine::Key::S)) {
-		camPos.y += speed * deltaTime;
-	}
-	if (thengine::Input::isKeyPressed(thengine::Key::A)) {
-		camPos.x -= speed * deltaTime;
-	}
-	if (thengine::Input::isKeyPressed(thengine::Key::D)) {
-		camPos.x += speed * deltaTime;
-	}
-	m_camera.setPosition(camPos);
 
 	// Camera zoom controls
 	if (thengine::Input::isKeyPressed(thengine::Key::Up)) {

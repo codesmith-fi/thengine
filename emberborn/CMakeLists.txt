@@ -11,6 +11,8 @@ add_executable(emberborn
     src/entity/EntityController.cpp
     src/entity/PlayerController.cpp
     src/entity/EntityRenderer.cpp
+    src/entity/GenericNeutralEntityAI.cpp
+    src/entity/MonsterController.cpp
 )
 
 # Link to your custom engine

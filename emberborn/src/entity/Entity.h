@@ -21,7 +21,11 @@ public:
     void setExperiencePoints(int xp) { m_experiencePoints = xp; }
 
     EntityType getType() const { return m_type; }
+    EntityType getEntityType() const { return m_type; }
     void setType(EntityType type) { m_type = type; }
+
+    float getSpeed() const { return m_speed; }
+    void setSpeed(float speed) { m_speed = speed; }
 
 private:
     int m_gridX = 0;
@@ -29,6 +33,7 @@ private:
     int m_hitPoints = 100;
     int m_experiencePoints = 0;
     EntityType m_type;
+    float m_speed = 1.0f;
 };
 
 } // namespace emberborn

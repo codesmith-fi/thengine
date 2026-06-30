@@ -21,13 +21,13 @@ void PlayerController::update(float deltaTime, const TileMap& tileMap) {
     int dx = 0;
     int dy = 0;
 
-    if (thengine::Input::isKeyPressed(thengine::Key::W) || thengine::Input::isKeyPressed(thengine::Key::Up)) {
+    if (thengine::Input::isKeyPressed(thengine::Key::W)) {
         dy = -1;
-    } else if (thengine::Input::isKeyPressed(thengine::Key::S) || thengine::Input::isKeyPressed(thengine::Key::Down)) {
+    } else if (thengine::Input::isKeyPressed(thengine::Key::S)) {
         dy = 1;
-    } else if (thengine::Input::isKeyPressed(thengine::Key::A) || thengine::Input::isKeyPressed(thengine::Key::Left)) {
+    } else if (thengine::Input::isKeyPressed(thengine::Key::A)) {
         dx = -1;
-    } else if (thengine::Input::isKeyPressed(thengine::Key::D) || thengine::Input::isKeyPressed(thengine::Key::Right)) {
+    } else if (thengine::Input::isKeyPressed(thengine::Key::D)) {
         dx = 1;
     }
 
