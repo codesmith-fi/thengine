@@ -56,8 +56,12 @@ VisibilityPolygon VisibilitySolver::calculateVisibility(
     }
 
     // D. Cast rays
-    std::vector<Vector2> hitPoints;
-    hitPoints.reserve(uniqueAngles.size());
+    struct TempVertex {
+        Vector2 position;
+        float angle;
+    };
+    std::vector<TempVertex> tempVertices;
+    tempVertices.reserve(uniqueAngles.size());
 
     for (float angle : uniqueAngles) {
         Vector2 direction(std::cos(angle), std::sin(angle));
@@ -82,16 +86,88 @@ VisibilityPolygon VisibilitySolver::calculateVisibility(
         }
 
         Vector2 hit = center + direction * closest_t;
-        hitPoints.push_back(hit);
+        tempVertices.push_back({ hit, angle });
     }
 
-    // F. Sort hitpoints strictly by their angle relative to the center
-    std::sort(hitPoints.begin(), hitPoints.end(), [&center](const Vector2& a, const Vector2& b) {
+    // Sort initial tempVertices by angle
+    std::sort(tempVertices.begin(), tempVertices.end(), [](const TempVertex& a, const TempVertex& b) {
+        return a.angle < b.angle;
+    });
+
+    // F. Adaptive Subdivision Step
+    const float MAX_EDGE_LENGTH = 40.0f; // threshold in pixels
+    const int MAX_DEPTH = 3;
+    bool subdivided = true;
+    int depth = 0;
+
+    while (subdivided && depth < MAX_DEPTH) {
+        subdivided = false;
+        std::vector<TempVertex> nextVertices;
+        nextVertices.reserve(tempVertices.size() * 2);
+
+        for (size_t i = 0; i < tempVertices.size(); ++i) {
+            const auto& A = tempVertices[i];
+            const auto& B = tempVertices[(i + 1) % tempVertices.size()];
+
+            nextVertices.push_back(A);
+
+            float dx = B.position.x - A.position.x;
+            float dy = B.position.y - A.position.y;
+            float dist = std::sqrt(dx * dx + dy * dy);
+
+            if (dist > MAX_EDGE_LENGTH) {
+                float angleA = A.angle;
+                float angleB = B.angle;
+                if (angleB < angleA) {
+                    angleB += 2.0f * M_PI;
+                }
+                float midAngle = (angleA + angleB) * 0.5f;
+
+                Vector2 direction(std::cos(midAngle), std::sin(midAngle));
+                float closest_t = radius;
+
+                for (const auto& segment : segments) {
+                    Vector2 SegA = segment.start;
+                    Vector2 SegB = segment.end;
+                    Vector2 T = SegA - center;
+                    Vector2 V = SegB - SegA;
+
+                    float denominator = direction.x * V.y - direction.y * V.x;
+                    if (std::abs(denominator) > 1e-6f) {
+                        float t = (T.x * V.y - T.y * V.x) / denominator;
+                        float u = (T.x * direction.y - T.y * direction.x) / denominator;
+                        if (t >= 0.0f && t < closest_t && u >= 0.0f && u <= 1.0f) {
+                            closest_t = t;
+                        }
+                    }
+                }
+
+                Vector2 midPos = center + direction * closest_t;
+                float normMidAngle = std::fmod(midAngle, 2.0f * M_PI);
+                if (normMidAngle < 0.0f) normMidAngle += 2.0f * M_PI;
+
+                nextVertices.push_back({ midPos, normMidAngle });
+                subdivided = true;
+            }
+        }
+        tempVertices = std::move(nextVertices);
+        depth++;
+    }
+
+    // Collect final sorted vertices
+    std::vector<Vector2> finalVertices;
+    finalVertices.reserve(tempVertices.size());
+    for (const auto& tv : tempVertices) {
+        finalVertices.push_back(tv.position);
+    }
+
+    // Sort strictly clockwise/counter-clockwise relative to center
+    std::sort(finalVertices.begin(), finalVertices.end(), [&center](const Vector2& a, const Vector2& b) {
         return std::atan2(a.y - center.y, a.x - center.x) < std::atan2(b.y - center.y, b.x - center.x);
     });
 
     VisibilityPolygon polygon;
-    polygon.vertices = std::move(hitPoints);
+    polygon.vertices = std::move(finalVertices);
     return polygon;
 }
 
