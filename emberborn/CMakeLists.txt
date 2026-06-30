@@ -4,6 +4,7 @@ add_executable(emberborn
     src/EmberbornGame.cpp
     src/core/Tile.cpp
     src/core/TileMap.cpp
+    src/core/LevelGenerator.cpp
     src/graphics/TileRenderer.cpp
 )
 
