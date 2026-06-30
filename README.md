@@ -7,6 +7,9 @@ This repository serves as a practical, highly-constrained experiment in **agenti
 > [!IMPORTANT]
 > **Project Status:** Up to this point, exactly **zero manual code edits** have been made to the core engine files. Every single line is orchestrate-designed by AI under strict architectural guidelines.
 
+**Prototype realtime Roguelike - Emberborn skeleton**
+![Prototype Realtime Roguelike Skeleton](https://i.imgur.com/FTRYvbX.png)
+
 **Without lighting**
 ![thengine in action, sandbox without lights](https://i.imgur.com/rJbme2n.png)
 
