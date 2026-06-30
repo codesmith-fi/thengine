@@ -166,8 +166,22 @@ VisibilityPolygon VisibilitySolver::calculateVisibility(
         return std::atan2(a.y - center.y, a.x - center.x) < std::atan2(b.y - center.y, b.x - center.x);
     });
 
+    // Precalculate attenuation values for high-performance rendering
+    std::vector<float> finalAttenuations;
+    finalAttenuations.reserve(finalVertices.size());
+    for (const auto& v : finalVertices) {
+        float dx = v.x - center.x;
+        float dy = v.y - center.y;
+        float d = std::sqrt(dx * dx + dy * dy);
+        float ratio = d / radius;
+        float att = (1.0f - ratio) / 0.85f;
+        att = std::max(0.0f, std::min(1.0f, att));
+        finalAttenuations.push_back(att * att * att);
+    }
+
     VisibilityPolygon polygon;
     polygon.vertices = std::move(finalVertices);
+    polygon.attenuations = std::move(finalAttenuations);
     return polygon;
 }
 

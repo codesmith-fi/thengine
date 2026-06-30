@@ -11,6 +11,7 @@ struct LineSegment {
 
 struct VisibilityPolygon {
     std::vector<Vector2> vertices;
+    std::vector<float> attenuations;
 };
 
 } // namespace thengine

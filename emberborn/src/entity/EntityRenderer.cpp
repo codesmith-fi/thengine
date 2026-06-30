@@ -12,8 +12,9 @@ void EntityRenderer::registerTexture(EntityType type, std::shared_ptr<thengine::
     }
 }
 
-void EntityRenderer::render(thengine::SpriteBatch& spriteBatch, const std::vector<std::shared_ptr<Entity>>& entities, float tileSize) const {
-    for (const auto& entity : entities) {
+void EntityRenderer::render(thengine::SpriteBatch& spriteBatch, const std::vector<std::shared_ptr<Entity>>& entities, const std::vector<thengine::Color>& tints, float tileSize) const {
+    for (size_t i = 0; i < entities.size(); ++i) {
+        const auto& entity = entities[i];
         if (!entity) continue;
 
         size_t idx = static_cast<size_t>(entity->getType());
@@ -34,6 +35,12 @@ void EntityRenderer::render(thengine::SpriteBatch& spriteBatch, const std::vecto
             tileSize / static_cast<float>(texture->getHeight())
         );
 
+        // Determine tint color
+        thengine::Color tintColor(255, 255, 255, 255);
+        if (i < tints.size()) {
+            tintColor = tints[i];
+        }
+
         // Render depth set to 0.2f (above tiles at 0.1f)
         spriteBatch.draw(
             texture,
@@ -41,7 +48,7 @@ void EntityRenderer::render(thengine::SpriteBatch& spriteBatch, const std::vecto
             scale,
             0.0f,                   // rotation
             {0.0f, 0.0f},           // origin (top-left)
-            {255, 255, 255, 255},   // white tint
+            tintColor,              // custom light/ambient tint
             0.2f                    // depth
         );
     }

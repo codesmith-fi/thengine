@@ -3,6 +3,7 @@
 #include <memory>
 #include <array>
 #include <vector>
+#include "thengine/primitives/Color.h"
 
 namespace thengine {
 class SpriteBatch;
@@ -20,7 +21,7 @@ public:
 
     void registerTexture(EntityType type, std::shared_ptr<thengine::Texture> texture);
 
-    void render(thengine::SpriteBatch& spriteBatch, const std::vector<std::shared_ptr<Entity>>& entities, float tileSize) const;
+    void render(thengine::SpriteBatch& spriteBatch, const std::vector<std::shared_ptr<Entity>>& entities, const std::vector<thengine::Color>& tints, float tileSize) const;
 
 private:
     std::array<std::shared_ptr<thengine::Texture>, static_cast<size_t>(EntityType::Count)> m_textures;

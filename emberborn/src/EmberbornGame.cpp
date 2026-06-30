@@ -155,6 +155,37 @@ void EmberbornGame::onLoadContent() {
 	} else {
 		LOG_ERROR() << "Failed to find a valid spawn tile for the monster.";
 	}
+
+	// Spawn a few static torches across the dungeon
+	int torchCount = 0;
+	for (int y = 5; y < m_tileMap.getHeight() - 5; y += 15) {
+		for (int x = 5; x < m_tileMap.getWidth() - 5; x += 15) {
+			if (m_tileMap.getTile(x, y).type == emberborn::Tile::TileType::Floor) {
+				// Don't place too close to player spawn
+				if (std::abs(x - startX) + std::abs(y - startY) > 5) {
+					thengine::Vector2 pos(
+						static_cast<float>(x) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f,
+						static_cast<float>(y) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f
+					);
+					
+					thengine::Color col;
+					if (torchCount % 4 == 0) col = thengine::Color(255, 150, 50, 255);      // Amber
+					else if (torchCount % 4 == 1) col = thengine::Color(50, 150, 255, 255); // Blue
+					else if (torchCount % 4 == 2) col = thengine::Color(255, 50, 50, 255);   // Red
+					else col = thengine::Color(50, 255, 50, 255);                           // Green
+					
+					thengine::LightSource light(pos, 350.0f, col, 1.0f, true);
+					light.cachedPolygon = thengine::VisibilitySolver::calculateVisibility(pos, 350.0f, m_tileMap);
+					light.hasCachedPolygon = true;
+					m_lights.push_back(light);
+					torchCount++;
+					if (torchCount >= 10) break; // Place up to 10 torches
+				}
+			}
+		}
+		if (torchCount >= 10) break;
+	}
+	LOG_INFO() << "Placed " << torchCount << " static dungeon torches.";
 }
 
 bool EmberbornGame::onUpdate(float deltaTime) {
@@ -182,13 +213,60 @@ bool EmberbornGame::onUpdate(float deltaTime) {
 	}
 	m_currentTorchRadius = m_currentTorchRadius + (m_targetTorchRadius + baseNoise - m_currentTorchRadius) * lerpFactor;
 
-	// Calculate player visibility polygon for torch light using dynamic radius
+	// Calculate visibility polygons for all active visible light sources (with CPU-side distance culling)
+	m_visibleLights.clear();
 	if (m_player) {
 		thengine::Vector2 playerPos(
 			static_cast<float>(m_player->getX()) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f,
 			static_cast<float>(m_player->getY()) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f
 		);
-		m_playerVisibility = thengine::VisibilitySolver::calculateVisibility(playerPos, m_currentTorchRadius, m_tileMap);
+
+		// Get camera properties for viewport culling
+		thengine::Vector2 camCenter = m_camera.getPosition();
+		float camWidth = static_cast<float>(emberborn::WINDOW_WIDTH) / m_camera.getZoom();
+		float camHeight = static_cast<float>(emberborn::WINDOW_HEIGHT) / m_camera.getZoom();
+
+		// Add player torch as dynamic light source
+		std::vector<thengine::LightSource> activeLights;
+		activeLights.push_back(thengine::LightSource(playerPos, m_currentTorchRadius, thengine::Color(255, 200, 50, 255), 1.0f));
+
+		// Include static torches
+		activeLights.insert(activeLights.end(), m_lights.begin(), m_lights.end());
+
+		// Calculate visibility polygons only for non-culled lights (using cache for static torches)
+		static int frameCount = 0;
+		frameCount++;
+		int solverCalls = 0;
+
+		int playerGridX = m_player->getX();
+		int playerGridY = m_player->getY();
+
+		for (const auto& light : activeLights) {
+			if (isLightInViewport(light, camCenter, camWidth, camHeight)) {
+				// Cull static lights that do not have line-of-sight to the player
+				if (light.isStatic) {
+					int lx = static_cast<int>(light.position.x / emberborn::TILE_SIZE);
+					int ly = static_cast<int>(light.position.y / emberborn::TILE_SIZE);
+					if (!hasLineOfSight(playerGridX, playerGridY, lx, ly)) {
+						continue; // Hide this light entirely
+					}
+				}
+
+				if (light.isStatic && light.hasCachedPolygon) {
+					m_visibleLights.push_back({ light, light.cachedPolygon });
+				} else {
+					thengine::VisibilityPolygon poly = thengine::VisibilitySolver::calculateVisibility(light.position, light.radius, m_tileMap);
+					m_visibleLights.push_back({ light, std::move(poly) });
+					solverCalls++;
+				}
+			}
+		}
+
+		if (frameCount % 60 == 0) {
+			LOG_INFO() << "Active lights total: " << activeLights.size() 
+			           << ", Solver calls: " << solverCalls 
+			           << ", Visible lights: " << m_visibleLights.size();
+		}
 	}
 
 	// Tick monster controller
@@ -240,10 +318,10 @@ bool EmberbornGame::onUpdate(float deltaTime) {
 
 void EmberbornGame::onRender(float deltaTime) {
 	// Clear the screen to a deep, dark atmospheric black/red color
-	getRenderer().clear(15, 2, 2, 255);
+	getRenderer().clear(5, 5, 8, 255);
 
-	// Set ambient light to fully lit (white) and clear point lights so the level is fully bright
-	m_basicEffect->setAmbientColor(thengine::Color(255, 255, 255, 255));
+	// Set ambient light to very dark for our Light on Dark Ambient model
+	m_basicEffect->setAmbientColor(thengine::Color(35, 30, 35, 255));
 	m_basicEffect->setAmbientIntensity(1.0f);
 	m_basicEffect->clearLights();
 
@@ -253,7 +331,7 @@ void EmberbornGame::onRender(float deltaTime) {
 		static_cast<float>(emberborn::WINDOW_HEIGHT)
 	);
 
-	// Render the map inside the camera view bounds (frustum culled)
+	// Render the map inside the camera view bounds (frustum culled) - Layer 1: Environment
 	m_spriteBatch->begin(m_basicEffect, cameraTransform);
 	m_tileRenderer.render(
 		*m_spriteBatch,
@@ -265,57 +343,56 @@ void EmberbornGame::onRender(float deltaTime) {
 	);
 	m_spriteBatch->end();
 
-	// Draw player visibility warm light fan and midnight blue ambient shadow mask overlay
-	if (m_player && m_pixelTex && !m_playerVisibility.vertices.empty()) {
-		thengine::Vector2 playerPos(
-			static_cast<float>(m_player->getX()) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f,
-			static_cast<float>(m_player->getY()) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f
-		);
+	// Restore ambient color to white for lights and entities rendering
+	m_basicEffect->setAmbientColor(thengine::Color(255, 255, 255, 255));
+	m_basicEffect->setAmbientIntensity(1.0f);
 
-		const auto& vertices = m_playerVisibility.vertices;
+	// Draw visible dynamic/static light sources - Layer 2: Lightmaps & Shadows
+	for (size_t idx = 0; idx < m_visibleLights.size(); ++idx) {
+		const auto& vl = m_visibleLights[idx];
+		const auto& light = vl.light;
+		const auto& vertices = vl.polygon.vertices;
 		size_t count = vertices.size();
+		if (count == 0) continue;
 
-		// 1. Build warm amber torch light triangles (Triangle Fan)
 		std::vector<thengine::Vertex> lightVertices;
 		lightVertices.reserve(count * 3);
 
-		// Alpha/Intensity Modulation based on radius fluctuation
-		float ratio = m_currentTorchRadius / 400.0f;
-		float alphaScale = ratio * ratio; // quadratic flicker intensity
-		if (alphaScale > 1.5f) {
-			alphaScale = 1.5f;
+		// Apply player torch flicker if index is 0
+		float flicker = 1.0f;
+		if (idx == 0) {
+			float ratio = m_currentTorchRadius / 400.0f;
+			flicker = ratio * ratio;
+			if (flicker > 1.5f) {
+				flicker = 1.5f;
+			}
 		}
 
-		float cR = 255.0f / 255.0f;
-		float cG = 200.0f / 255.0f;
-		float cB = 50.0f / 255.0f;
-		float cA_center = (100.0f / 255.0f) * alphaScale; // soft warm center
+		float cR = static_cast<float>(light.color.r) / 255.0f;
+		float cG = static_cast<float>(light.color.g) / 255.0f;
+		float cB = static_cast<float>(light.color.b) / 255.0f;
+		float cA_center = (150.0f / 255.0f) * flicker * light.intensity;
+
+		const auto& attenuations = vl.polygon.attenuations;
 
 		for (size_t i = 0; i < count; ++i) {
 			const auto& vCurrent = vertices[i];
 			const auto& vNext = vertices[(i + 1) % count];
 
-			// Calculate distance and attenuation for vCurrent
-			float dx1 = vCurrent.x - playerPos.x;
-			float dy1 = vCurrent.y - playerPos.y;
-			float d1 = std::sqrt(dx1 * dx1 + dy1 * dy1);
-			float ratio1 = d1 / m_currentTorchRadius;
-			float att1 = (1.0f - ratio1) / 0.85f;
-			att1 = std::max(0.0f, std::min(1.0f, att1));
-			att1 = att1 * att1 * att1; // cubic smooth curves
-			float cA_curr = (100.0f / 255.0f) * att1 * alphaScale;
+			// Read pre-calculated attenuation values
+			float att1 = 0.0f;
+			if (i < attenuations.size()) {
+				att1 = attenuations[i];
+			}
+			float att2 = 0.0f;
+			if (((i + 1) % count) < attenuations.size()) {
+				att2 = attenuations[(i + 1) % count];
+			}
 
-			// Calculate distance and attenuation for vNext
-			float dx2 = vNext.x - playerPos.x;
-			float dy2 = vNext.y - playerPos.y;
-			float d2 = std::sqrt(dx2 * dx2 + dy2 * dy2);
-			float ratio2 = d2 / m_currentTorchRadius;
-			float att2 = (1.0f - ratio2) / 0.85f;
-			att2 = std::max(0.0f, std::min(1.0f, att2));
-			att2 = att2 * att2 * att2; // cubic smooth curves
-			float cA_nxt = (100.0f / 255.0f) * att2 * alphaScale;
+			float cA_curr = (150.0f / 255.0f) * att1 * flicker * light.intensity;
+			float cA_nxt = (150.0f / 255.0f) * att2 * flicker * light.intensity;
 
-			thengine::Vertex vCenter = { playerPos.x, playerPos.y, 0.0f, 0.0f, cR, cG, cB, cA_center };
+			thengine::Vertex vCenter = { light.position.x, light.position.y, 0.0f, 0.0f, cR, cG, cB, cA_center };
 			thengine::Vertex vCurr = { vCurrent.x, vCurrent.y, 0.0f, 0.0f, cR, cG, cB, cA_curr };
 			thengine::Vertex vNxt = { vNext.x, vNext.y, 0.0f, 0.0f, cR, cG, cB, cA_nxt };
 
@@ -325,64 +402,62 @@ void EmberbornGame::onRender(float deltaTime) {
 		}
 
 		getRenderer().drawBatched(m_pixelTex, lightVertices.data(), lightVertices.size(), m_basicEffect, cameraTransform);
+	}
 
-		// 2. Build dark ambient shadow triangles (Triangle list between polygon and viewport boundaries)
-		float boxSize = 8000.0f;
-		float xMin = playerPos.x - boxSize;
-		float xMax = playerPos.x + boxSize;
-		float yMin = playerPos.y - boxSize;
-		float yMax = playerPos.y + boxSize;
+	// Calculate CPU-side entity tints based on ambient and visible light line-of-sight
+	std::vector<thengine::Color> entityTints;
+	entityTints.reserve(m_entities.size());
 
-		auto projectToBoundary = [](const thengine::Vector2& P, const thengine::Vector2& V, float xMin, float xMax, float yMin, float yMax) {
-			thengine::Vector2 D = V - P;
-			float tX = (D.x > 0.0f) ? (xMax - P.x) / D.x : (D.x < 0.0f) ? (xMin - P.x) / D.x : 1e10f;
-			float tY = (D.y > 0.0f) ? (yMax - P.y) / D.y : (D.y < 0.0f) ? (yMin - P.y) / D.y : 1e10f;
-			float t = std::min(tX, tY);
-			return P + D * t;
-		};
-
-		std::vector<thengine::Vector2> boundaries;
-		boundaries.reserve(count);
-		for (size_t i = 0; i < count; ++i) {
-			boundaries.push_back(projectToBoundary(playerPos, vertices[i], xMin, xMax, yMin, yMax));
+	for (const auto& entity : m_entities) {
+		if (!entity) {
+			entityTints.push_back(thengine::Color(35, 30, 35, 255));
+			continue;
 		}
 
-		std::vector<thengine::Vertex> shadowVertices;
-		shadowVertices.reserve(count * 6);
+		thengine::Vector2 entityPos(
+			static_cast<float>(entity->getX()) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f,
+			static_cast<float>(entity->getY()) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f
+		);
 
-		// Midnight blue/black ambient darkness overlay
-		float sR = 5.0f / 255.0f;
-		float sG = 5.0f / 255.0f;
-		float sB = 10.0f / 255.0f;
-		float sA = 225.0f / 255.0f; // highly opaque shadow
+		float accumR = 35.0f;
+		float accumG = 30.0f;
+		float accumB = 35.0f;
 
-		for (size_t i = 0; i < count; ++i) {
-			const auto& vCurrent = vertices[i];
-			const auto& vNext = vertices[(i + 1) % count];
+		for (size_t idx = 0; idx < m_visibleLights.size(); ++idx) {
+			const auto& vl = m_visibleLights[idx];
+			const auto& light = vl.light;
 
-			const auto& bCurrent = boundaries[i];
-			const auto& bNext = boundaries[(i + 1) % count];
+			float d = (entityPos - light.position).length();
+			if (d < light.radius) {
+				int lx = static_cast<int>(light.position.x / emberborn::TILE_SIZE);
+				int ly = static_cast<int>(light.position.y / emberborn::TILE_SIZE);
+				int ex = entity->getX();
+				int ey = entity->getY();
 
-			// Triangle 1: (vCurrent, bCurrent, bNext)
-			thengine::Vertex vt1_1 = { vCurrent.x, vCurrent.y, 0.0f, 0.0f, sR, sG, sB, sA };
-			thengine::Vertex vt1_2 = { bCurrent.x, bCurrent.y, 0.0f, 0.0f, sR, sG, sB, sA };
-			thengine::Vertex vt1_3 = { bNext.x,    bNext.y,    0.0f, 0.0f, sR, sG, sB, sA };
+				if (hasLineOfSight(lx, ly, ex, ey)) {
+					float ratio = d / light.radius;
+					float att = (1.0f - ratio) / 0.85f;
+					att = std::max(0.0f, std::min(1.0f, att));
+					att = att * att * att;
 
-			// Triangle 2: (vCurrent, bNext, vNext)
-			thengine::Vertex vt2_1 = { vCurrent.x, vCurrent.y, 0.0f, 0.0f, sR, sG, sB, sA };
-			thengine::Vertex vt2_2 = { bNext.x,    bNext.y,    0.0f, 0.0f, sR, sG, sB, sA };
-			thengine::Vertex vt2_3 = { vNext.x,    vNext.y,    0.0f, 0.0f, sR, sG, sB, sA };
+					float flicker = 1.0f;
+					if (idx == 0) {
+						float r = m_currentTorchRadius / 400.0f;
+						flicker = r * r;
+						if (flicker > 1.5f) flicker = 1.5f;
+					}
 
-			shadowVertices.push_back(vt1_1);
-			shadowVertices.push_back(vt1_2);
-			shadowVertices.push_back(vt1_3);
-
-			shadowVertices.push_back(vt2_1);
-			shadowVertices.push_back(vt2_2);
-			shadowVertices.push_back(vt2_3);
+					accumR += (static_cast<float>(light.color.r) - 35.0f) * att * flicker * light.intensity;
+					accumG += (static_cast<float>(light.color.g) - 30.0f) * att * flicker * light.intensity;
+					accumB += (static_cast<float>(light.color.b) - 35.0f) * att * flicker * light.intensity;
+				}
+			}
 		}
 
-		getRenderer().drawBatched(m_pixelTex, shadowVertices.data(), shadowVertices.size(), m_basicEffect, cameraTransform);
+		uint8_t r = static_cast<uint8_t>(std::clamp(accumR, 0.0f, 255.0f));
+		uint8_t g = static_cast<uint8_t>(std::clamp(accumG, 0.0f, 255.0f));
+		uint8_t b = static_cast<uint8_t>(std::clamp(accumB, 0.0f, 255.0f));
+		entityTints.push_back(thengine::Color(r, g, b, 255));
 	}
 
 	// Render dynamic entities on top of the fully lit/darkened world (Layer 3: Entities & Foreground)
@@ -390,6 +465,7 @@ void EmberbornGame::onRender(float deltaTime) {
 	m_entityRenderer.render(
 		*m_spriteBatch,
 		m_entities,
+		entityTints,
 		emberborn::TILE_SIZE
 	);
 	m_spriteBatch->end();
@@ -415,6 +491,33 @@ void EmberbornGame::onReleaseContent() {}
 
 void EmberbornGame::onShutdown() {}
 
+bool EmberbornGame::isLightInViewport(
+	const thengine::LightSource& light,
+	const thengine::Vector2& camCenter,
+	float camWidth,
+	float camHeight
+) const {
+	if (!light.active) return false;
+
+	// Calculate camera viewport AABB (with extra safety margin for smooth entry/exit)
+	float margin = 64.0f;
+	float minX = camCenter.x - camWidth * 0.5f - margin;
+	float maxX = camCenter.x + camWidth * 0.5f + margin;
+	float minY = camCenter.y - camHeight * 0.5f - margin;
+	float maxY = camCenter.y + camHeight * 0.5f + margin;
+
+	// Find closest point on AABB to the light
+	float closestX = std::max(minX, std::min(light.position.x, maxX));
+	float closestY = std::max(minY, std::min(light.position.y, maxY));
+
+	// Distance check using squared length
+	float dx = light.position.x - closestX;
+	float dy = light.position.y - closestY;
+	float distSq = dx * dx + dy * dy;
+
+	return distSq < (light.radius * light.radius);
+}
+
 void EmberbornGame::drawLine(
 	thengine::SpriteBatch& spriteBatch,
 	const thengine::Vector2& start,
@@ -439,4 +542,33 @@ void EmberbornGame::drawLine(
 		color,
 		0.3f // Draw depth slightly above entities
 	);
+}
+
+bool EmberbornGame::hasLineOfSight(int x1, int y1, int x2, int y2) const {
+	int dx = std::abs(x2 - x1);
+	int dy = std::abs(y2 - y1);
+	int sx = (x1 < x2) ? 1 : -1;
+	int sy = (y1 < y2) ? 1 : -1;
+	int err = dx - dy;
+
+	int x = x1;
+	int y = y1;
+	while (true) {
+		if (x == x2 && y == y2) return true;
+		if ((x != x1 || y != y1) && (x != x2 || y != y2)) {
+			if (m_tileMap.getTile(x, y).type == emberborn::Tile::TileType::Wall ||
+				m_tileMap.getTile(x, y).type == emberborn::Tile::TileType::Void) {
+				return false;
+			}
+		}
+		int e2 = 2 * err;
+		if (e2 > -dy) {
+			err -= dy;
+			x += sx;
+		}
+		if (e2 < dx) {
+			err += dx;
+			y += sy;
+		}
+	}
 }

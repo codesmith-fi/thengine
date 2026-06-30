@@ -15,6 +15,7 @@
 
 #include "entity/EntityRenderer.h"
 #include "thengine/view/VisibilityTypes.h"
+#include "thengine/view/LightSource.h"
 
 namespace emberborn {
 class Entity;
@@ -62,5 +63,15 @@ private:
 	float m_targetTorchRadius = 400.0f;
 	float m_crackleTimer = 0.0f;
 
+	std::vector<thengine::LightSource> m_lights;
+
+	struct VisibleLight {
+		thengine::LightSource light;
+		thengine::VisibilityPolygon polygon;
+	};
+	std::vector<VisibleLight> m_visibleLights;
+
+	bool isLightInViewport(const thengine::LightSource& light, const thengine::Vector2& camCenter, float camWidth, float camHeight) const;
+	bool hasLineOfSight(int x1, int y1, int x2, int y2) const;
 	void drawLine(thengine::SpriteBatch& spriteBatch, const thengine::Vector2& start, const thengine::Vector2& end, const thengine::Color& color);
 };
