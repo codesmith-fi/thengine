@@ -142,6 +142,19 @@ void LevelGenerator::generateBasicLayout(TileMap& tileMap, int minRoomSize, int 
 					}
 				}
 			}
+
+			// Add wall borders at the 4 diagonals of the turn/intersection corner (prevCenterX, currentCenterY)
+			for (int dx : {-1, 1}) {
+				for (int dy : {-1, 1}) {
+					int nx = prevCenterX + dx;
+					int ny = currentCenterY + dy;
+					if (tileMap.inBounds(nx, ny)) {
+						if (tileMap.getTile(nx, ny).type == Tile::TileType::Void) {
+							tileMap.setTile(nx, ny, Tile::TileType::Wall);
+						}
+					}
+				}
+			}
 		}
 
 		// Update previous centers and count of carved rooms
