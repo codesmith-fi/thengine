@@ -276,13 +276,7 @@ bool Renderer::beginFrame() {
     return false;
   }
 
-  SDL_GPUColorTargetInfo colorTarget = {};
-  colorTarget.texture = m_swapchainTexture;
-  colorTarget.clear_color = {m_clearColor[0], m_clearColor[1], m_clearColor[2], m_clearColor[3]};
-  colorTarget.load_op = SDL_GPU_LOADOP_CLEAR;
-  colorTarget.store_op = SDL_GPU_STOREOP_STORE;
-
-  m_renderPass = SDL_BeginGPURenderPass(m_cmdBuf, &colorTarget, 1, nullptr);
+  m_hasClearedThisFrame = false;
   return true;
 }
 
@@ -295,6 +289,19 @@ void Renderer::endFrame() {
   if (m_cmdBuf) {
     // Draw any remaining batches
     renderCurrentBatches();
+
+    // If we didn't draw anything this frame, we must still clear the screen!
+    if (!m_hasClearedThisFrame) {
+      SDL_GPUColorTargetInfo colorTarget = {};
+      colorTarget.texture = m_swapchainTexture;
+      colorTarget.clear_color = {m_clearColor[0], m_clearColor[1], m_clearColor[2], m_clearColor[3]};
+      colorTarget.load_op = SDL_GPU_LOADOP_CLEAR;
+      colorTarget.store_op = SDL_GPU_STOREOP_STORE;
+      m_renderPass = SDL_BeginGPURenderPass(m_cmdBuf, &colorTarget, 1, nullptr);
+      SDL_EndGPURenderPass(m_renderPass);
+      m_renderPass = nullptr;
+      m_hasClearedThisFrame = true;
+    }
 
     // Submit command buffer asynchronously without acquiring a fence
     SDL_SubmitGPUCommandBuffer(m_cmdBuf);
@@ -341,12 +348,14 @@ void Renderer::renderCurrentBatches() {
     SDL_EndGPUCopyPass(copy);
   }
 
-  // 4. Start a new render pass with LOADOP_LOAD to preserve previously drawn parts
+  // 4. Start render pass. If this is the first draw in this frame, use CLEAR. Otherwise LOAD.
   SDL_GPUColorTargetInfo colorTarget = {};
   colorTarget.texture = m_swapchainTexture;
-  colorTarget.load_op = SDL_GPU_LOADOP_LOAD;
+  colorTarget.clear_color = {m_clearColor[0], m_clearColor[1], m_clearColor[2], m_clearColor[3]};
+  colorTarget.load_op = m_hasClearedThisFrame ? SDL_GPU_LOADOP_LOAD : SDL_GPU_LOADOP_CLEAR;
   colorTarget.store_op = SDL_GPU_STOREOP_STORE;
   m_renderPass = SDL_BeginGPURenderPass(m_cmdBuf, &colorTarget, 1, nullptr);
+  m_hasClearedThisFrame = true;
 
   // 5. Draw all accumulated batches inside the render pass
   int window_w, window_h;

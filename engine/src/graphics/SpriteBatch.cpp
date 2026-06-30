@@ -5,6 +5,7 @@
 #include "thengine/graphics/SpriteFont.h"
 #include <algorithm>
 #include <cmath>
+#include <numeric>
 
 namespace {
 
@@ -141,12 +142,38 @@ void SpriteBatch::end() {
     if (!m_isBegun) return;
     
     if (!m_sprites.empty()) {
-        std::sort(m_sprites.begin(), m_sprites.end(), [](const SpriteDrawCommand& a, const SpriteDrawCommand& b) {
-            if (a.depth != b.depth) {
-                return a.depth < b.depth;
+        // Bypass sorting if all sprites share the same depth and texture
+        bool needsSorting = false;
+        std::shared_ptr<Texture> firstTex = m_sprites[0].texture;
+        float firstDepth = m_sprites[0].depth;
+        for (size_t i = 1; i < m_sprites.size(); ++i) {
+            if (m_sprites[i].depth != firstDepth || m_sprites[i].texture != firstTex) {
+                needsSorting = true;
+                break;
             }
-            return a.texture.get() < b.texture.get();
-        });
+        }
+        
+        if (needsSorting) {
+            // Sort indices to avoid costly copies of the large SpriteDrawCommand struct
+            std::vector<size_t> indices(m_sprites.size());
+            std::iota(indices.begin(), indices.end(), 0);
+            
+            std::sort(indices.begin(), indices.end(), [this](size_t a, size_t b) {
+                const auto& sa = m_sprites[a];
+                const auto& sb = m_sprites[b];
+                if (sa.depth != sb.depth) {
+                    return sa.depth < sb.depth;
+                }
+                return sa.texture.get() < sb.texture.get();
+            });
+            
+            std::vector<SpriteDrawCommand> sortedSprites;
+            sortedSprites.reserve(m_sprites.size());
+            for (size_t idx : indices) {
+                sortedSprites.push_back(std::move(m_sprites[idx]));
+            }
+            m_sprites = std::move(sortedSprites);
+        }
         
         flush();
     }
@@ -158,13 +185,36 @@ void SpriteBatch::end() {
 
 void SpriteBatch::checkFlush() {
     if ((m_sprites.size() + 1) * 6 > Renderer::MAX_VERTICES_PER_FRAME) {
-        // Sort the current batch of sprites to maintain batching efficiency
-        std::sort(m_sprites.begin(), m_sprites.end(), [](const SpriteDrawCommand& a, const SpriteDrawCommand& b) {
-            if (a.depth != b.depth) {
-                return a.depth < b.depth;
+        bool needsSorting = false;
+        std::shared_ptr<Texture> firstTex = m_sprites[0].texture;
+        float firstDepth = m_sprites[0].depth;
+        for (size_t i = 1; i < m_sprites.size(); ++i) {
+            if (m_sprites[i].depth != firstDepth || m_sprites[i].texture != firstTex) {
+                needsSorting = true;
+                break;
             }
-            return a.texture.get() < b.texture.get();
-        });
+        }
+        
+        if (needsSorting) {
+            std::vector<size_t> indices(m_sprites.size());
+            std::iota(indices.begin(), indices.end(), 0);
+            
+            std::sort(indices.begin(), indices.end(), [this](size_t a, size_t b) {
+                const auto& sa = m_sprites[a];
+                const auto& sb = m_sprites[b];
+                if (sa.depth != sb.depth) {
+                    return sa.depth < sb.depth;
+                }
+                return sa.texture.get() < sb.texture.get();
+            });
+            
+            std::vector<SpriteDrawCommand> sortedSprites;
+            sortedSprites.reserve(m_sprites.size());
+            for (size_t idx : indices) {
+                sortedSprites.push_back(std::move(m_sprites[idx]));
+            }
+            m_sprites = std::move(sortedSprites);
+        }
         
         flush();
         m_sprites.clear();

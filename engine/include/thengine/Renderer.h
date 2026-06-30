@@ -37,7 +37,7 @@ class Renderer {
 
 public:
   static constexpr size_t NUM_FRAMES = 3;
-  static constexpr size_t MAX_VERTICES_PER_FRAME = 60000;
+  static constexpr size_t MAX_VERTICES_PER_FRAME = 600000;
   static constexpr size_t MAX_VERTICES = NUM_FRAMES * MAX_VERTICES_PER_FRAME;
 
   ~Renderer();
@@ -105,6 +105,7 @@ private:
   std::unordered_map<int, std::shared_ptr<SpriteEffect>> m_Effects;
 
   float m_clearColor[4] = {0.39f, 0.58f, 0.93f, 1.0f};
+  bool m_hasClearedThisFrame = false;
 
   void initPipeline();
   void cleanupPipeline();
