@@ -6,6 +6,7 @@
 #include "thengine/Input.h"
 #include "thengine/Renderer.h"
 #include <unordered_map>
+#include <format>
 
 namespace emberborn {
 
@@ -63,6 +64,8 @@ void EmberbornGame::onLoadContent() {
 }
 
 bool EmberbornGame::onUpdate(float deltaTime) {
+	m_fpsCounter.update(deltaTime);
+
 	if (thengine::Input::isKeyPressed(thengine::Key::Escape)) {
 		LOG_INFO() << "ESCAPE pressed, exiting Emberborn.";
 		return false;
@@ -86,14 +89,22 @@ bool EmberbornGame::onUpdate(float deltaTime) {
 	m_camera.setPosition(camPos);
 
 	// Camera zoom controls
-	if (thengine::Input::isKeyPressed(thengine::Key::Q)) {
+	if (thengine::Input::isKeyPressed(thengine::Key::Up)) {
 		m_camera.setZoom(m_camera.getZoom() + deltaTime * 1.0f);
 	}
-	if (thengine::Input::isKeyPressed(thengine::Key::E)) {
+	if (thengine::Input::isKeyPressed(thengine::Key::Down)) {
 		m_camera.setZoom(m_camera.getZoom() - deltaTime * 1.0f);
 		if (m_camera.getZoom() < 0.1f) {
 			m_camera.setZoom(0.1f);
 		}
+	}
+
+	// Camera rotation controls
+	if (thengine::Input::isKeyPressed(thengine::Key::Left)) {
+		m_camera.setRotation(m_camera.getRotation() - deltaTime * 1.0f);
+	}
+	if (thengine::Input::isKeyPressed(thengine::Key::Right)) {
+		m_camera.setRotation(m_camera.getRotation() + deltaTime * 1.0f);
 	}
 
 	return true;
@@ -139,6 +150,15 @@ void EmberbornGame::onRender(float deltaTime) {
 
 		// Deep red/crimson colored warning text
 		m_spriteBatch->drawString(m_font, text, position, thengine::Color(200, 30, 30, 255));
+
+		// Draw FPS in the top right corner
+		std::string fpsStr = std::format("FPS: {:.1f}", m_fpsCounter.getFps());
+		thengine::Vector2 fpsSize = m_font->measureString(fpsStr);
+		thengine::Vector2 fpsPos(
+			static_cast<float>(emberborn::WINDOW_WIDTH) - fpsSize.x - 20.0f,
+			35.0f
+		);
+		m_spriteBatch->drawString(m_font, fpsStr, fpsPos, thengine::Color(0, 255, 255, 255));
 
 		m_spriteBatch->end();
 	}

@@ -293,128 +293,135 @@ void Renderer::endFrame() {
   }
 
   if (m_cmdBuf) {
-    // 1. Upload all accumulated vertex data in a single copy pass
-    if (!m_frameVertices.empty()) {
-      size_t frameStart = m_currentFrameIndex * MAX_VERTICES_PER_FRAME;
-      size_t frameEnd = (m_currentFrameIndex + 1) * MAX_VERTICES_PER_FRAME;
-      if (m_vertexOffset + m_frameVertices.size() > frameEnd) {
-        LOG_WARN() << "Vertex buffer streaming limit reached for frame " << m_currentFrameIndex 
-                   << ", wrapping around! Current offset: " << m_vertexOffset 
-                   << ", required: " << m_frameVertices.size();
-        m_vertexOffset = frameStart;
-      }
+    // Draw any remaining batches
+    renderCurrentBatches();
 
-      void *map = SDL_MapGPUTransferBuffer(m_device, m_transferBuffer, false);
-      if (map) {
-        std::memcpy(static_cast<char*>(map) + (m_vertexOffset * sizeof(Vertex)),
-                    m_frameVertices.data(),
-                    m_frameVertices.size() * sizeof(Vertex));
-        SDL_UnmapGPUTransferBuffer(m_device, m_transferBuffer);
-
-        SDL_GPUCopyPass *copy = SDL_BeginGPUCopyPass(m_cmdBuf);
-        SDL_GPUTransferBufferLocation srcLoc = {};
-        srcLoc.transfer_buffer = m_transferBuffer;
-        srcLoc.offset = m_vertexOffset * sizeof(Vertex);
-
-        SDL_GPUBufferRegion dstReg = {};
-        dstReg.buffer = m_vertexBuffer;
-        dstReg.offset = m_vertexOffset * sizeof(Vertex);
-        dstReg.size = m_frameVertices.size() * sizeof(Vertex);
-
-        SDL_UploadToGPUBuffer(copy, &srcLoc, &dstReg, false);
-        SDL_EndGPUCopyPass(copy);
-      }
-    }
-
-    // 2. Start the single render pass with LOADOP_CLEAR (to clear swapchain and begin drawing)
-    SDL_GPUColorTargetInfo colorTarget = {};
-    colorTarget.texture = m_swapchainTexture;
-    colorTarget.clear_color = {m_clearColor[0], m_clearColor[1], m_clearColor[2], m_clearColor[3]};
-    colorTarget.load_op = SDL_GPU_LOADOP_CLEAR;
-    colorTarget.store_op = SDL_GPU_STOREOP_STORE;
-    m_renderPass = SDL_BeginGPURenderPass(m_cmdBuf, &colorTarget, 1, nullptr);
-
-    // 3. Draw all accumulated batches inside the render pass
-    int window_w, window_h;
-    SDL_GetWindowSizeInPixels(m_window, &window_w, &window_h);
-    float W_screen = static_cast<float>(window_w);
-    float H_screen = static_cast<float>(window_h);
-
-    SDL_GPUViewport viewport = {0.0f, 0.0f, W_screen, H_screen, 0.0f, 1.0f};
-    SDL_SetGPUViewport(m_renderPass, &viewport);
-
-    Matrix4 ortho = Matrix4::createOrthographic(W_screen, H_screen);
-
-    for (const auto& batch : m_frameBatches) {
-      if (batch.effect && batch.effect->getPipeline()) {
-        SDL_BindGPUGraphicsPipeline(m_renderPass, batch.effect->getPipeline());
-      } else {
-        SDL_BindGPUGraphicsPipeline(m_renderPass, m_spritePipeline);
-      }
-
-      SDL_GPUBufferBinding vertexBinding = {};
-      vertexBinding.buffer = m_vertexBuffer;
-      vertexBinding.offset = (m_vertexOffset + batch.startVertex) * sizeof(Vertex);
-      SDL_BindGPUVertexBuffers(m_renderPass, 0, &vertexBinding, 1);
-
-      SDL_GPUTextureSamplerBinding samplerBinding = {};
-      samplerBinding.texture = batch.texture->m_texture;
-      samplerBinding.sampler = m_sampler;
-      SDL_BindGPUFragmentSamplers(m_renderPass, 0, &samplerBinding, 1);
-
-      // Push fragment lighting constants to slot 0
-      struct LightingConstants {
-        float ambientColor[4];
-        float ambientIntensity;
-        int activeLightCount;
-        float padding1[2];
-        PointLight lights[10];
-      } lc = {};
-
-      if (batch.hasLighting) {
-        std::memcpy(lc.ambientColor, batch.ambientColor, sizeof(lc.ambientColor));
-        lc.ambientIntensity = batch.ambientIntensity;
-        lc.activeLightCount = batch.activeLightCount;
-        for (int i = 0; i < batch.activeLightCount && i < 10; ++i) {
-          lc.lights[i] = batch.lights[i];
-        }
-      } else {
-        lc.ambientColor[0] = 1.0f;
-        lc.ambientColor[1] = 1.0f;
-        lc.ambientColor[2] = 1.0f;
-        lc.ambientColor[3] = 1.0f;
-        lc.ambientIntensity = 1.0f;
-        lc.activeLightCount = 0;
-      }
-      SDL_PushGPUFragmentUniformData(m_cmdBuf, 0, &lc, sizeof(lc));
-
-      Matrix4 finalTransform = ortho * batch.transform;
-
-      PushConstants pc = {};
-      std::memcpy(pc.transform, finalTransform.m, sizeof(pc.transform));
-      pc.r = 1.0f;
-      pc.g = 1.0f;
-      pc.b = 1.0f;
-      pc.a = 1.0f;
-
-      SDL_PushGPUVertexUniformData(m_cmdBuf, 0, &pc, sizeof(pc));
-
-      SDL_DrawGPUPrimitives(m_renderPass, batch.vertexCount, 1, 0, 0);
-    }
-
-    // 4. End the render pass
-    SDL_EndGPURenderPass(m_renderPass);
-    m_renderPass = nullptr;
-
-    // Advance offset by total vertices uploaded in the frame
-    m_vertexOffset += m_frameVertices.size();
-
-    // 5. Submit command buffer asynchronously without acquiring a fence
+    // Submit command buffer asynchronously without acquiring a fence
     SDL_SubmitGPUCommandBuffer(m_cmdBuf);
     m_cmdBuf = nullptr;
   }
+}
 
-  // Clear frame-accumulated buffers
+void Renderer::renderCurrentBatches() {
+  if (m_frameVertices.empty() || !m_cmdBuf)
+    return;
+
+  // 1. End any active render pass
+  if (m_renderPass) {
+    SDL_EndGPURenderPass(m_renderPass);
+    m_renderPass = nullptr;
+  }
+
+  // 2. Check if we will overflow the frame's buffer segment
+  size_t frameStart = m_currentFrameIndex * MAX_VERTICES_PER_FRAME;
+  size_t frameEnd = (m_currentFrameIndex + 1) * MAX_VERTICES_PER_FRAME;
+  if (m_vertexOffset + m_frameVertices.size() > frameEnd) {
+    m_vertexOffset = frameStart;
+  }
+
+  // 3. Upload vertex data
+  void *map = SDL_MapGPUTransferBuffer(m_device, m_transferBuffer, false);
+  if (map) {
+    std::memcpy(static_cast<char*>(map) + (m_vertexOffset * sizeof(Vertex)),
+                m_frameVertices.data(),
+                m_frameVertices.size() * sizeof(Vertex));
+    SDL_UnmapGPUTransferBuffer(m_device, m_transferBuffer);
+
+    SDL_GPUCopyPass *copy = SDL_BeginGPUCopyPass(m_cmdBuf);
+    SDL_GPUTransferBufferLocation srcLoc = {};
+    srcLoc.transfer_buffer = m_transferBuffer;
+    srcLoc.offset = m_vertexOffset * sizeof(Vertex);
+
+    SDL_GPUBufferRegion dstReg = {};
+    dstReg.buffer = m_vertexBuffer;
+    dstReg.offset = m_vertexOffset * sizeof(Vertex);
+    dstReg.size = m_frameVertices.size() * sizeof(Vertex);
+
+    SDL_UploadToGPUBuffer(copy, &srcLoc, &dstReg, false);
+    SDL_EndGPUCopyPass(copy);
+  }
+
+  // 4. Start a new render pass with LOADOP_LOAD to preserve previously drawn parts
+  SDL_GPUColorTargetInfo colorTarget = {};
+  colorTarget.texture = m_swapchainTexture;
+  colorTarget.load_op = SDL_GPU_LOADOP_LOAD;
+  colorTarget.store_op = SDL_GPU_STOREOP_STORE;
+  m_renderPass = SDL_BeginGPURenderPass(m_cmdBuf, &colorTarget, 1, nullptr);
+
+  // 5. Draw all accumulated batches inside the render pass
+  int window_w, window_h;
+  SDL_GetWindowSizeInPixels(m_window, &window_w, &window_h);
+  float W_screen = static_cast<float>(window_w);
+  float H_screen = static_cast<float>(window_h);
+
+  SDL_GPUViewport viewport = {0.0f, 0.0f, W_screen, H_screen, 0.0f, 1.0f};
+  SDL_SetGPUViewport(m_renderPass, &viewport);
+
+  Matrix4 ortho = Matrix4::createOrthographic(W_screen, H_screen);
+
+  for (const auto& batch : m_frameBatches) {
+    if (batch.effect && batch.effect->getPipeline()) {
+      SDL_BindGPUGraphicsPipeline(m_renderPass, batch.effect->getPipeline());
+    } else {
+      SDL_BindGPUGraphicsPipeline(m_renderPass, m_spritePipeline);
+    }
+
+    SDL_GPUBufferBinding vertexBinding = {};
+    vertexBinding.buffer = m_vertexBuffer;
+    vertexBinding.offset = (m_vertexOffset + batch.startVertex) * sizeof(Vertex);
+    SDL_BindGPUVertexBuffers(m_renderPass, 0, &vertexBinding, 1);
+
+    SDL_GPUTextureSamplerBinding samplerBinding = {};
+    samplerBinding.texture = batch.texture->m_texture;
+    samplerBinding.sampler = m_sampler;
+    SDL_BindGPUFragmentSamplers(m_renderPass, 0, &samplerBinding, 1);
+
+    // Push fragment lighting constants to slot 0
+    struct LightingConstants {
+      float ambientColor[4];
+      float ambientIntensity;
+      int activeLightCount;
+      float padding1[2];
+      PointLight lights[10];
+    } lc = {};
+
+    if (batch.hasLighting) {
+      std::memcpy(lc.ambientColor, batch.ambientColor, sizeof(lc.ambientColor));
+      lc.ambientIntensity = batch.ambientIntensity;
+      lc.activeLightCount = batch.activeLightCount;
+      for (int i = 0; i < batch.activeLightCount && i < 10; ++i) {
+        lc.lights[i] = batch.lights[i];
+      }
+    } else {
+      lc.ambientColor[0] = 1.0f;
+      lc.ambientColor[1] = 1.0f;
+      lc.ambientColor[2] = 1.0f;
+      lc.ambientColor[3] = 1.0f;
+      lc.ambientIntensity = 1.0f;
+      lc.activeLightCount = 0;
+    }
+    SDL_PushGPUFragmentUniformData(m_cmdBuf, 0, &lc, sizeof(lc));
+
+    Matrix4 finalTransform = ortho * batch.transform;
+
+    PushConstants pc = {};
+    std::memcpy(pc.transform, finalTransform.m, sizeof(pc.transform));
+    pc.r = 1.0f;
+    pc.g = 1.0f;
+    pc.b = 1.0f;
+    pc.a = 1.0f;
+
+    SDL_PushGPUVertexUniformData(m_cmdBuf, 0, &pc, sizeof(pc));
+
+    SDL_DrawGPUPrimitives(m_renderPass, batch.vertexCount, 1, 0, 0);
+  }
+
+  // 6. End render pass
+  SDL_EndGPURenderPass(m_renderPass);
+  m_renderPass = nullptr;
+
+  // 7. Advance offset and clear lists
+  m_vertexOffset += m_frameVertices.size();
   m_frameVertices.clear();
   m_frameBatches.clear();
 }
@@ -441,6 +448,11 @@ void Renderer::drawBatched(std::shared_ptr<Texture> texture,
                            const Matrix4& transformMatrix) {
   if (!texture || vertexCount == 0)
     return;
+
+  // If adding this batch would exceed the vertex limit per frame, flush current batches first
+  if (m_frameVertices.size() + vertexCount > MAX_VERTICES_PER_FRAME) {
+    renderCurrentBatches();
+  }
 
   RenderBatch batch;
   batch.texture = texture;

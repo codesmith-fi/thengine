@@ -6,6 +6,7 @@
 #include "thengine/graphics/SpriteBatch.h"
 #include "thengine/graphics/SpriteFont.h"
 #include "thengine/view/Camera2D.h"
+#include "thengine/FpsCounter.h"
 #include "core/TileMap.h"
 #include "graphics/TileRenderer.h"
 #include <memory>
@@ -33,4 +34,5 @@ private:
 	emberborn::TileMap m_tileMap;
 	emberborn::TileRenderer m_tileRenderer;
 	thengine::Camera2D m_camera;
+	thengine::FpsCounter m_fpsCounter;
 };

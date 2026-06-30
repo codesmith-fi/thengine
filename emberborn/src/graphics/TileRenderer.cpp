@@ -16,15 +16,23 @@ void TileRenderer::render(thengine::SpriteBatch& spriteBatch, const TileMap& til
 		zoom = 1.0f;
 	}
 
-	// Calculate visible bounds in world space based on camera position and zoom
+	// Calculate visible bounds in world space, accounting for camera rotation
+	float angle = camera.getRotation();
+	float cosA = std::abs(std::cos(angle));
+	float sinA = std::abs(std::sin(angle));
+
 	float halfWidth = (screenWidth / zoom) * 0.5f;
 	float halfHeight = (screenHeight / zoom) * 0.5f;
 
+	// Calculate the exact AABB (Axis-Aligned Bounding Box) of the rotated viewport
+	float extentX = halfWidth * cosA + halfHeight * sinA;
+	float extentY = halfWidth * sinA + halfHeight * cosA;
+
 	thengine::Vector2 camPos = camera.getPosition();
-	float minWorldX = camPos.x - halfWidth;
-	float maxWorldX = camPos.x + halfWidth;
-	float minWorldY = camPos.y - halfHeight;
-	float maxWorldY = camPos.y + halfHeight;
+	float minWorldX = camPos.x - extentX;
+	float maxWorldX = camPos.x + extentX;
+	float minWorldY = camPos.y - extentY;
+	float maxWorldY = camPos.y + extentY;
 
 	// Convert world space coordinates to tile grid indices
 	int startX = std::max(0, static_cast<int>(std::floor(minWorldX / tileSize)));

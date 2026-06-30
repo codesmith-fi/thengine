@@ -68,6 +68,7 @@ public:
     void end();
 
 private:
+    void checkFlush();
     void flush();
 
     Renderer& m_renderer;

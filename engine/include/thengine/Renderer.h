@@ -36,6 +36,10 @@ class Renderer {
   friend class SpriteEffect;
 
 public:
+  static constexpr size_t NUM_FRAMES = 3;
+  static constexpr size_t MAX_VERTICES_PER_FRAME = 60000;
+  static constexpr size_t MAX_VERTICES = NUM_FRAMES * MAX_VERTICES_PER_FRAME;
+
   ~Renderer();
 
   // Prevent copy/move
@@ -73,10 +77,6 @@ private:
   SDL_GPUTexture *m_swapchainTexture = nullptr;
   SDL_GPURenderPass *m_renderPass = nullptr;
 
-  static constexpr size_t NUM_FRAMES = 3;
-  static constexpr size_t MAX_VERTICES_PER_FRAME = 60000;
-  static constexpr size_t MAX_VERTICES = NUM_FRAMES * MAX_VERTICES_PER_FRAME;
-
   SDL_GPUGraphicsPipeline *m_spritePipeline = nullptr;
   SDL_GPUBuffer *m_vertexBuffer = nullptr;
   SDL_GPUTransferBuffer *m_transferBuffer = nullptr;
@@ -108,6 +108,7 @@ private:
 
   void initPipeline();
   void cleanupPipeline();
+  void renderCurrentBatches();
 };
 
 } // namespace thengine

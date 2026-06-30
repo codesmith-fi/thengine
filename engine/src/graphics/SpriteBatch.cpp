@@ -72,7 +72,7 @@ void SpriteBatch::draw(std::shared_ptr<Texture> texture,
                        const Color& color, 
                        float depth) {
     if (!m_isBegun || !texture) return;
-    
+    checkFlush();
     m_sprites.push_back({texture, position, scale, rotation, origin, color, depth, Rectangle(), false});
 }
 
@@ -85,7 +85,7 @@ void SpriteBatch::draw(std::shared_ptr<Texture> texture,
                        const Color& color, 
                        float depth) {
     if (!m_isBegun || !texture) return;
-    
+    checkFlush();
     m_sprites.push_back({texture, position, scale, rotation, origin, color, depth, sourceRect, true});
 }
 
@@ -154,6 +154,21 @@ void SpriteBatch::end() {
     m_isBegun = false;
     m_sprites.clear();
     m_currentEffect = nullptr;
+}
+
+void SpriteBatch::checkFlush() {
+    if ((m_sprites.size() + 1) * 6 > Renderer::MAX_VERTICES_PER_FRAME) {
+        // Sort the current batch of sprites to maintain batching efficiency
+        std::sort(m_sprites.begin(), m_sprites.end(), [](const SpriteDrawCommand& a, const SpriteDrawCommand& b) {
+            if (a.depth != b.depth) {
+                return a.depth < b.depth;
+            }
+            return a.texture.get() < b.texture.get();
+        });
+        
+        flush();
+        m_sprites.clear();
+    }
 }
 
 void SpriteBatch::flush() {
