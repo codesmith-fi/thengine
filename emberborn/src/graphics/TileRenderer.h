@@ -28,7 +28,11 @@ public:
 	 */
 	void registerTexture(Tile::TileType type, std::shared_ptr<thengine::Texture> texture);
 
-	void render(thengine::SpriteBatch& spriteBatch, const TileMap& tileMap, float tileSize = 64.0f) const;
+	/**
+	 * Renders the visible region of the TileMap inside the camera's viewport.
+	 * Performs light-weight frustum culling mathematically without calling low-level platform APIs.
+	 */
+	void render(thengine::SpriteBatch& spriteBatch, const TileMap& tileMap, const thengine::Camera2D& camera, float screenWidth, float screenHeight, float tileSize = 64.0f) const;
 
 private:
 	// Internal storage mapping tile types to one or more texture variants
