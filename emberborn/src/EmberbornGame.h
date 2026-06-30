@@ -11,6 +11,15 @@
 #include "graphics/TileRenderer.h"
 #include <memory>
 #include <string>
+#include <vector>
+
+#include "entity/EntityRenderer.h"
+
+namespace emberborn {
+class Entity;
+class PlayerEntity;
+class PlayerController;
+}
 
 class EmberbornGame : public thengine::Game {
 public:
@@ -35,4 +44,9 @@ private:
 	emberborn::TileRenderer m_tileRenderer;
 	thengine::Camera2D m_camera;
 	thengine::FpsCounter m_fpsCounter;
+
+	emberborn::EntityRenderer m_entityRenderer;
+	std::vector<std::shared_ptr<emberborn::Entity>> m_entities;
+	std::unique_ptr<emberborn::PlayerController> m_playerController;
+	std::shared_ptr<emberborn::PlayerEntity> m_player;
 };

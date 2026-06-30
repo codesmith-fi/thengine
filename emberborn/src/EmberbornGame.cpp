@@ -5,6 +5,10 @@
 #include "thengine/graphics/Shader.h"
 #include "thengine/Input.h"
 #include "thengine/Renderer.h"
+#include "entity/Entity.h"
+#include "entity/PlayerEntity.h"
+#include "entity/PlayerController.h"
+#include "entity/EntityRenderer.h"
 #include <unordered_map>
 #include <format>
 
@@ -61,10 +65,56 @@ void EmberbornGame::onLoadContent() {
 
 	// Generate a larger basic dungeon level (10 rooms)
 	emberborn::LevelGenerator::generateBasicLayout(m_tileMap, 5, 12, 10);
+
+	// Load player texture and register it
+	auto playerTex = m_content->load<thengine::Texture>("assets/player.png");
+	if (playerTex) {
+		m_entityRenderer.registerTexture("player", playerTex);
+		LOG_INFO() << "Loaded and registered player texture.";
+	} else {
+		LOG_ERROR() << "Failed to load player texture.";
+	}
+
+	// Find the first floor tile to spawn the player
+	int startX = -1, startY = -1;
+	for (int y = 0; y < m_tileMap.getHeight(); ++y) {
+		for (int x = 0; x < m_tileMap.getWidth(); ++x) {
+			if (m_tileMap.getTile(x, y).type == emberborn::Tile::TileType::Floor) {
+				startX = x;
+				startY = y;
+				break;
+			}
+		}
+		if (startX != -1) break;
+	}
+
+	if (startX != -1 && startY != -1) {
+		m_player = std::make_shared<emberborn::PlayerEntity>();
+		m_player->setX(startX);
+		m_player->setY(startY);
+		m_entities.push_back(m_player);
+
+		m_playerController = std::make_unique<emberborn::PlayerController>();
+		m_playerController->possess(m_player.get());
+
+		// Center camera on the player
+		m_camera.setPosition(thengine::Vector2(
+			static_cast<float>(startX) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f,
+			static_cast<float>(startY) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f
+		));
+		LOG_INFO() << "Player spawned at: " << startX << ", " << startY;
+	} else {
+		LOG_ERROR() << "Failed to find a valid spawn tile for the player.";
+	}
 }
 
 bool EmberbornGame::onUpdate(float deltaTime) {
 	m_fpsCounter.update(deltaTime);
+
+	// Tick player controller
+	if (m_playerController) {
+		m_playerController->update(deltaTime, m_tileMap);
+	}
 
 	if (thengine::Input::isKeyPressed(thengine::Key::Escape)) {
 		LOG_INFO() << "ESCAPE pressed, exiting Emberborn.";
@@ -133,6 +183,11 @@ void EmberbornGame::onRender(float deltaTime) {
 		m_camera,
 		static_cast<float>(emberborn::WINDOW_WIDTH),
 		static_cast<float>(emberborn::WINDOW_HEIGHT),
+		emberborn::TILE_SIZE
+	);
+	m_entityRenderer.render(
+		*m_spriteBatch,
+		m_entities,
 		emberborn::TILE_SIZE
 	);
 	m_spriteBatch->end();

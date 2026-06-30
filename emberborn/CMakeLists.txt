@@ -6,6 +6,11 @@ add_executable(emberborn
     src/core/TileMap.cpp
     src/core/LevelGenerator.cpp
     src/graphics/TileRenderer.cpp
+    src/entity/Entity.cpp
+    src/entity/PlayerEntity.cpp
+    src/entity/EntityController.cpp
+    src/entity/PlayerController.cpp
+    src/entity/EntityRenderer.cpp
 )
 
 # Link to your custom engine
