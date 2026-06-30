@@ -7,6 +7,9 @@ This repository serves as a practical, highly-constrained experiment in **agenti
 > [!IMPORTANT]
 > **Project Status:** Up to this point, exactly **zero manual code edits** have been made to the core engine files. Every single line is orchestrate-designed by AI under strict architectural guidelines.
 
+**Supports Raycast lighting and shadow - first phase**
+![Real time raycast lighting](https://i.imgur.com/VsfGrBi.png)
+
 **Prototype realtime Roguelike - Emberborn skeleton**
 ![Prototype Realtime Roguelike Skeleton](https://i.imgur.com/FTRYvbX.png)
 
@@ -33,7 +36,7 @@ The development of `thengine` is steered by three major pillars:
 
 * **Sprite Batching & Rendering:** Full 2D transformations supported (position, rotation, zoom). Powered by an optimized, thread-safe **Asynchronous Dynamic Ring-Buffer (Triple-Buffering)** pipeline that eliminates GPU race conditions while maintaining high-throughput rendering.
 * **Deferred Batch Architecture:** Features a robust state-snapshotting system within `Renderer::drawBatched`. This ensures independent lighting and material contexts (e.g., world-space elements vs. screen-space HUD) can be queued sequentially without state-overwrite side effects.
-* **Dynamic 2D Lighting MVP:** Built-in ambient light model (color and master intensity controls) alongside support for up to **10 independent dynamic 2D point lights** per scene, complete with smooth distance attenuation math calculated directly in SPIR-V fragment shaders.
+* **Dynamic 2D Lighting MVP:** Built-in ambient light model (color and master intensity controls) alongside support for up to **10 independent dynamic 2D point lights** per scene, complete with smooth distance attenuation math calculated directly in SPIR-V fragment shaders. Supports Raycast lighting and shadows.
 * **Decoupled Input System:** Features a custom hardware-agnostic Input Handling layer that abstracts raw SDL3 key events into independent engine commands, allowing clean gameplay code decoupled from the underlying platform.
 * **Engine-Level Abstraction API:** Strictly isolates native SDL3 and Vulkan/GPU driver structures behind clean, engine-managed interfaces, protecting core game logic from backend library changes.
 * **Modern Text System:** True UTF-8 Unicode rendering with full support for Finnish vowels (ä, ö, å) and text scaling/rotation/positioning via `std::string_view` and `std::format`.
