@@ -48,6 +48,7 @@ project_root/
 - **Data Types**: Use standard containers (`std::vector`, `std::unordered_map` etc.).
 - **Variables & Functions**: Extensive use of `const`, `noexcept`, and `[[nodiscard]]` where appropriate.
 - **Interface/API**: Keep public API clean, minimal, type-safe, and well-documented.
+- **Game Layer Isolation**: The game layer must remain completely isolated from platform-specific libraries (like SDL3). Never duplicate rendering pipelines or culling logic; leverage the engine's subsystems (like SpriteBatch) using world-space increments.
 - **When not sure**: Always prefer asking for guidance when there're uncertainties in how to implement.
 
 ## SDL3 Development Guidelines
