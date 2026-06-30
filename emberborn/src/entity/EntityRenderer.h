@@ -1,7 +1,7 @@
 #pragma once
+#include "EntityType.h"
 #include <memory>
-#include <string>
-#include <unordered_map>
+#include <array>
 #include <vector>
 
 namespace thengine {
@@ -18,12 +18,12 @@ public:
     EntityRenderer() = default;
     ~EntityRenderer() = default;
 
-    void registerTexture(const std::string& entityTypeKey, std::shared_ptr<thengine::Texture> texture);
+    void registerTexture(EntityType type, std::shared_ptr<thengine::Texture> texture);
 
     void render(thengine::SpriteBatch& spriteBatch, const std::vector<std::shared_ptr<Entity>>& entities, float tileSize) const;
 
 private:
-    std::unordered_map<std::string, std::shared_ptr<thengine::Texture>> m_textures;
+    std::array<std::shared_ptr<thengine::Texture>, static_cast<size_t>(EntityType::Count)> m_textures;
 };
 
 } // namespace emberborn

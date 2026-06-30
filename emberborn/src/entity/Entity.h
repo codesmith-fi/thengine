@@ -1,5 +1,5 @@
 #pragma once
-#include <string>
+#include "EntityType.h"
 
 namespace emberborn {
 
@@ -20,15 +20,15 @@ public:
     int getExperiencePoints() const { return m_experiencePoints; }
     void setExperiencePoints(int xp) { m_experiencePoints = xp; }
 
-    std::string getTypeKey() const { return m_typeKey; }
-    void setTypeKey(const std::string& key) { m_typeKey = key; }
+    EntityType getType() const { return m_type; }
+    void setType(EntityType type) { m_type = type; }
 
 private:
     int m_gridX = 0;
     int m_gridY = 0;
     int m_hitPoints = 100;
     int m_experiencePoints = 0;
-    std::string m_typeKey;
+    EntityType m_type;
 };
 
 } // namespace emberborn

@@ -69,7 +69,7 @@ void EmberbornGame::onLoadContent() {
 	// Load player texture and register it
 	auto playerTex = m_content->load<thengine::Texture>("assets/player.png");
 	if (playerTex) {
-		m_entityRenderer.registerTexture("player", playerTex);
+		m_entityRenderer.registerTexture(emberborn::EntityType::Player, playerTex);
 		LOG_INFO() << "Loaded and registered player texture.";
 	} else {
 		LOG_ERROR() << "Failed to load player texture.";

@@ -5,9 +5,10 @@
 
 namespace emberborn {
 
-void EntityRenderer::registerTexture(const std::string& entityTypeKey, std::shared_ptr<thengine::Texture> texture) {
-    if (texture) {
-        m_textures[entityTypeKey] = texture;
+void EntityRenderer::registerTexture(EntityType type, std::shared_ptr<thengine::Texture> texture) {
+    size_t idx = static_cast<size_t>(type);
+    if (idx < m_textures.size()) {
+        m_textures[idx] = texture;
     }
 }
 
@@ -15,10 +16,11 @@ void EntityRenderer::render(thengine::SpriteBatch& spriteBatch, const std::vecto
     for (const auto& entity : entities) {
         if (!entity) continue;
 
-        auto it = m_textures.find(entity->getTypeKey());
-        if (it == m_textures.end() || !it->second) continue;
+        size_t idx = static_cast<size_t>(entity->getType());
+        if (idx >= m_textures.size()) continue;
 
-        const auto& texture = it->second;
+        const auto& texture = m_textures[idx];
+        if (!texture) continue;
 
         // Calculate world coordinates
         thengine::Vector2 position(

@@ -3,7 +3,7 @@
 namespace emberborn {
 
 PlayerEntity::PlayerEntity() : Entity() {
-    setTypeKey("player");
+    setType(EntityType::Player);
 }
 
 } // namespace emberborn

@@ -7,6 +7,6 @@ Entity::Entity()
     , m_gridY(0)
     , m_hitPoints(100)
     , m_experiencePoints(0)
-    , m_typeKey("") {}
+    , m_type(EntityType::Skeleton) {}
 
 } // namespace emberborn
