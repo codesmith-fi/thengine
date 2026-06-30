@@ -252,31 +252,101 @@ void EmberbornGame::onRender(float deltaTime) {
 		emberborn::TILE_SIZE
 	);
 
-	// Draw player visibility debug lines (torch light rays and boundary edges)
+	m_spriteBatch->end();
+
+	// Draw player visibility warm light fan and midnight blue ambient shadow mask overlay
 	if (m_player && m_pixelTex && !m_playerVisibility.vertices.empty()) {
 		thengine::Vector2 playerPos(
 			static_cast<float>(m_player->getX()) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f,
 			static_cast<float>(m_player->getY()) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f
 		);
 
-		// Semitransparent amber/yellow color for torch rays
-		thengine::Color rayColor(255, 180, 0, 80);
-
 		const auto& vertices = m_playerVisibility.vertices;
 		size_t count = vertices.size();
+
+		// 1. Build warm amber torch light triangles (Triangle Fan)
+		std::vector<thengine::Vertex> lightVertices;
+		lightVertices.reserve(count * 3);
+
+		float cR = 255.0f / 255.0f;
+		float cG = 200.0f / 255.0f;
+		float cB = 50.0f / 255.0f;
+		float cA_center = 70.0f / 255.0f; // warm bright center
+		float cA_outer = 15.0f / 255.0f;  // soft outer edge fade
+
 		for (size_t i = 0; i < count; ++i) {
 			const auto& vCurrent = vertices[i];
 			const auto& vNext = vertices[(i + 1) % count];
 
-			// Ray from player center to boundary vertex
-			drawLine(*m_spriteBatch, playerPos, vCurrent, rayColor);
+			thengine::Vertex vCenter = { playerPos.x, playerPos.y, 0.0f, 0.0f, cR, cG, cB, cA_center };
+			thengine::Vertex vCurr = { vCurrent.x, vCurrent.y, 0.0f, 0.0f, cR, cG, cB, cA_outer };
+			thengine::Vertex vNxt = { vNext.x, vNext.y, 0.0f, 0.0f, cR, cG, cB, cA_outer };
 
-			// Outer boundary edge line connecting adjacent vertices
-			drawLine(*m_spriteBatch, vCurrent, vNext, rayColor);
+			lightVertices.push_back(vCenter);
+			lightVertices.push_back(vCurr);
+			lightVertices.push_back(vNxt);
 		}
-	}
 
-	m_spriteBatch->end();
+		getRenderer().drawBatched(m_pixelTex, lightVertices.data(), lightVertices.size(), m_basicEffect, cameraTransform);
+
+		// 2. Build dark ambient shadow triangles (Triangle list between polygon and viewport boundaries)
+		float boxSize = 8000.0f;
+		float xMin = playerPos.x - boxSize;
+		float xMax = playerPos.x + boxSize;
+		float yMin = playerPos.y - boxSize;
+		float yMax = playerPos.y + boxSize;
+
+		auto projectToBoundary = [](const thengine::Vector2& P, const thengine::Vector2& V, float xMin, float xMax, float yMin, float yMax) {
+			thengine::Vector2 D = V - P;
+			float tX = (D.x > 0.0f) ? (xMax - P.x) / D.x : (D.x < 0.0f) ? (xMin - P.x) / D.x : 1e10f;
+			float tY = (D.y > 0.0f) ? (yMax - P.y) / D.y : (D.y < 0.0f) ? (yMin - P.y) / D.y : 1e10f;
+			float t = std::min(tX, tY);
+			return P + D * t;
+		};
+
+		std::vector<thengine::Vector2> boundaries;
+		boundaries.reserve(count);
+		for (size_t i = 0; i < count; ++i) {
+			boundaries.push_back(projectToBoundary(playerPos, vertices[i], xMin, xMax, yMin, yMax));
+		}
+
+		std::vector<thengine::Vertex> shadowVertices;
+		shadowVertices.reserve(count * 6);
+
+		// Midnight blue/black ambient darkness overlay
+		float sR = 5.0f / 255.0f;
+		float sG = 5.0f / 255.0f;
+		float sB = 10.0f / 255.0f;
+		float sA = 225.0f / 255.0f; // highly opaque shadow
+
+		for (size_t i = 0; i < count; ++i) {
+			const auto& vCurrent = vertices[i];
+			const auto& vNext = vertices[(i + 1) % count];
+
+			const auto& bCurrent = boundaries[i];
+			const auto& bNext = boundaries[(i + 1) % count];
+
+			// Triangle 1: (vCurrent, bCurrent, bNext)
+			thengine::Vertex vt1_1 = { vCurrent.x, vCurrent.y, 0.0f, 0.0f, sR, sG, sB, sA };
+			thengine::Vertex vt1_2 = { bCurrent.x, bCurrent.y, 0.0f, 0.0f, sR, sG, sB, sA };
+			thengine::Vertex vt1_3 = { bNext.x,    bNext.y,    0.0f, 0.0f, sR, sG, sB, sA };
+
+			// Triangle 2: (vCurrent, bNext, vNext)
+			thengine::Vertex vt2_1 = { vCurrent.x, vCurrent.y, 0.0f, 0.0f, sR, sG, sB, sA };
+			thengine::Vertex vt2_2 = { bNext.x,    bNext.y,    0.0f, 0.0f, sR, sG, sB, sA };
+			thengine::Vertex vt2_3 = { vNext.x,    vNext.y,    0.0f, 0.0f, sR, sG, sB, sA };
+
+			shadowVertices.push_back(vt1_1);
+			shadowVertices.push_back(vt1_2);
+			shadowVertices.push_back(vt1_3);
+
+			shadowVertices.push_back(vt2_1);
+			shadowVertices.push_back(vt2_2);
+			shadowVertices.push_back(vt2_3);
+		}
+
+		getRenderer().drawBatched(m_pixelTex, shadowVertices.data(), shadowVertices.size(), m_basicEffect, cameraTransform);
+	}
 
 	// Draw HUD overlay in screen space
 	if (m_font) {
