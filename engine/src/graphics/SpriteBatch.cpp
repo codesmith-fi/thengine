@@ -52,7 +52,10 @@ inline uint32_t decodeNextUtf8(std::string_view::const_iterator& it, std::string
 
 namespace thengine {
 
-SpriteBatch::SpriteBatch(Renderer& renderer) : m_renderer(renderer), m_isBegun(false) {}
+SpriteBatch::SpriteBatch(Renderer& renderer) : m_renderer(renderer), m_isBegun(false) {
+    m_sprites.reserve(10000);
+    m_vertexBuffer.reserve(60000);
+}
 
 SpriteBatch::~SpriteBatch() {}
 
