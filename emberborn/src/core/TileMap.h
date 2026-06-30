@@ -1,14 +1,15 @@
 #pragma once
 
 #include "Tile.h"
+#include "thengine/view/IObstacleProvider.h"
 #include <vector>
 
 namespace emberborn {
 
-class TileMap {
+class TileMap : public thengine::IObstacleProvider {
 public:
   TileMap(int width, int height);
-  ~TileMap();
+  ~TileMap() override;
 
   int getWidth() const noexcept { return m_width; }
   int getHeight() const noexcept { return m_height; }
@@ -19,6 +20,9 @@ public:
 
   const Tile& getTile(int x, int y) const;
   void setTile(int x, int y, Tile::TileType type);
+
+  // Implement IObstacleProvider
+  std::vector<thengine::LineSegment> getObstacleEdges(const thengine::Vector2& center, float radius) const override;
 
 private:
   int m_width;

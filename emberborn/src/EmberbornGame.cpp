@@ -5,6 +5,7 @@
 #include "thengine/graphics/Shader.h"
 #include "thengine/Input.h"
 #include "thengine/Renderer.h"
+#include "thengine/view/VisibilitySolver.h"
 #include "entity/Entity.h"
 #include "entity/PlayerEntity.h"
 #include "entity/PlayerController.h"
@@ -74,6 +75,14 @@ void EmberbornGame::onLoadContent() {
 		LOG_INFO() << "Loaded and registered player texture.";
 	} else {
 		LOG_ERROR() << "Failed to load player texture.";
+	}
+
+	// Load 1x1 pixel primitive texture for line drawing
+	m_pixelTex = m_content->load<thengine::Texture>("assets/Primitives/pixel_1x1.png");
+	if (m_pixelTex) {
+		LOG_INFO() << "Loaded 1x1 pixel primitive texture.";
+	} else {
+		LOG_ERROR() << "Failed to load 1x1 pixel primitive texture.";
 	}
 
 	// Find the first floor tile to spawn the player
@@ -156,6 +165,15 @@ bool EmberbornGame::onUpdate(float deltaTime) {
 		m_playerController->update(deltaTime, m_tileMap);
 	}
 
+	// Calculate player visibility polygon for torch light
+	if (m_player) {
+		thengine::Vector2 playerPos(
+			static_cast<float>(m_player->getX()) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f,
+			static_cast<float>(m_player->getY()) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f
+		);
+		m_playerVisibility = thengine::VisibilitySolver::calculateVisibility(playerPos, 400.0f, m_tileMap);
+	}
+
 	// Tick monster controller
 	if (m_monsterController) {
 		m_monsterController->update(deltaTime, m_tileMap);
@@ -233,6 +251,31 @@ void EmberbornGame::onRender(float deltaTime) {
 		m_entities,
 		emberborn::TILE_SIZE
 	);
+
+	// Draw player visibility debug lines (torch light rays and boundary edges)
+	if (m_player && m_pixelTex && !m_playerVisibility.vertices.empty()) {
+		thengine::Vector2 playerPos(
+			static_cast<float>(m_player->getX()) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f,
+			static_cast<float>(m_player->getY()) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f
+		);
+
+		// Semitransparent amber/yellow color for torch rays
+		thengine::Color rayColor(255, 180, 0, 80);
+
+		const auto& vertices = m_playerVisibility.vertices;
+		size_t count = vertices.size();
+		for (size_t i = 0; i < count; ++i) {
+			const auto& vCurrent = vertices[i];
+			const auto& vNext = vertices[(i + 1) % count];
+
+			// Ray from player center to boundary vertex
+			drawLine(*m_spriteBatch, playerPos, vCurrent, rayColor);
+
+			// Outer boundary edge line connecting adjacent vertices
+			drawLine(*m_spriteBatch, vCurrent, vNext, rayColor);
+		}
+	}
+
 	m_spriteBatch->end();
 
 	// Draw HUD overlay in screen space
@@ -265,3 +308,29 @@ void EmberbornGame::onRender(float deltaTime) {
 void EmberbornGame::onReleaseContent() {}
 
 void EmberbornGame::onShutdown() {}
+
+void EmberbornGame::drawLine(
+	thengine::SpriteBatch& spriteBatch,
+	const thengine::Vector2& start,
+	const thengine::Vector2& end,
+	const thengine::Color& color
+) {
+	if (!m_pixelTex) return;
+
+	thengine::Vector2 diff = end - start;
+	float length = diff.length();
+	if (length < 0.001f) return;
+
+	float rotation = std::atan2(diff.y, diff.x);
+	thengine::Vector2 scale(length, 1.5f); // 1.5 pixels thickness
+
+	spriteBatch.draw(
+		m_pixelTex,
+		start,
+		scale,
+		rotation,
+		{0.0f, 0.5f}, // Left-center origin
+		color,
+		0.3f // Draw depth slightly above entities
+	);
+}

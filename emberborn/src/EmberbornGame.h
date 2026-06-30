@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "entity/EntityRenderer.h"
+#include "thengine/view/VisibilityTypes.h"
 
 namespace emberborn {
 class Entity;
@@ -52,4 +53,9 @@ private:
 	std::shared_ptr<emberborn::PlayerEntity> m_player;
 	std::shared_ptr<emberborn::Entity> m_monster;
 	std::unique_ptr<emberborn::MonsterController> m_monsterController;
+
+	thengine::VisibilityPolygon m_playerVisibility;
+	std::shared_ptr<thengine::Texture> m_pixelTex;
+
+	void drawLine(thengine::SpriteBatch& spriteBatch, const thengine::Vector2& start, const thengine::Vector2& end, const thengine::Color& color);
 };

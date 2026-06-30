@@ -17,6 +17,7 @@ target_sources(thengine PRIVATE
     src/graphics/SpriteEffect.cpp
     src/graphics/BasicEffect.cpp
     src/graphics/SpriteFont.cpp
+    src/view/VisibilitySolver.cpp
 )
 
 # Export headers so the sandbox can #include them
