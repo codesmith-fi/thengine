@@ -268,14 +268,25 @@ bool EmberbornGame::onUpdate(float deltaTime) {
 		int playerGridX = m_player->getX();
 		int playerGridY = m_player->getY();
 
-		for (const auto& light : activeLights) {
+		const float MAX_LIGHT_PERCEPTION_DIST = 450.0f;
+
+		for (auto light : activeLights) {
 			if (isLightInViewport(light, camCenter, camWidth, camHeight)) {
-				// Cull static lights that do not have line-of-sight to the player
+				// Cull static lights that do not have line-of-sight to the player or are too far
 				if (light.isStatic) {
 					int lx = static_cast<int>(light.position.x / emberborn::TILE_SIZE);
 					int ly = static_cast<int>(light.position.y / emberborn::TILE_SIZE);
 					if (!hasLineOfSight(playerGridX, playerGridY, lx, ly)) {
 						continue; // Hide this light entirely
+					}
+
+					// Strict Distance Culling & Fade
+					float dist = (playerPos - light.position).length();
+					if (dist > MAX_LIGHT_PERCEPTION_DIST) {
+						continue;
+					}
+					if (dist > MAX_LIGHT_PERCEPTION_DIST * 0.8f) {
+						light.intensity *= (1.0f - (dist - MAX_LIGHT_PERCEPTION_DIST * 0.8f) / (MAX_LIGHT_PERCEPTION_DIST * 0.2f));
 					}
 				}
 
