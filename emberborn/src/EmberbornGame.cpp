@@ -508,11 +508,53 @@ void EmberbornGame::onRender(float deltaTime) {
 	m_spriteBatch->end();
 
 	// 2b. Draw Entities (Layer 3) at full brightness, so they get masked by the Lightmap next
-	std::vector<thengine::Color> entityTints(m_entities.size(), thengine::Color(255, 255, 255, 255));
+	// Filter dynamic entities to ensure only those with active LOS and within range are drawn
+	std::vector<std::shared_ptr<emberborn::Entity>> filteredEntities;
+	std::vector<thengine::Color> entityTints;
+
+	int playerGridX = 0;
+	int playerGridY = 0;
+	thengine::Vector2 playerPos(0.0f, 0.0f);
+	if (m_player) {
+		playerGridX = m_player->getX();
+		playerGridY = m_player->getY();
+		playerPos = thengine::Vector2(
+			static_cast<float>(playerGridX) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f,
+			static_cast<float>(playerGridY) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f
+		);
+	}
+
+	const float MAX_LIGHT_PERCEPTION_DIST = 450.0f;
+
+	for (const auto& entity : m_entities) {
+		if (!entity) continue;
+
+		// The player is always visible to themselves
+		if (entity->getType() == emberborn::EntityType::Player) {
+			filteredEntities.push_back(entity);
+			entityTints.push_back(thengine::Color(255, 255, 255, 255));
+			continue;
+		}
+
+		// Check line-of-sight and perception distance for monsters
+		thengine::Vector2 entityPos(
+			static_cast<float>(entity->getX()) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f,
+			static_cast<float>(entity->getY()) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f
+		);
+
+		float dist = (playerPos - entityPos).length();
+		if (dist <= MAX_LIGHT_PERCEPTION_DIST) {
+			if (hasLineOfSight(playerGridX, playerGridY, entity->getX(), entity->getY())) {
+				filteredEntities.push_back(entity);
+				entityTints.push_back(thengine::Color(255, 255, 255, 255));
+			}
+		}
+	}
+
 	m_spriteBatch->begin(m_basicEffect, cameraTransform);
 	m_entityRenderer.render(
 		*m_spriteBatch,
-		m_entities,
+		filteredEntities,
 		entityTints,
 		emberborn::TILE_SIZE
 	);
