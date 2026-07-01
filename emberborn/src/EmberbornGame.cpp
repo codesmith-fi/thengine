@@ -230,7 +230,7 @@ bool EmberbornGame::onUpdate(float deltaTime) {
 
 		// Add player torch as dynamic light source
 		std::vector<thengine::LightSource> activeLights;
-		activeLights.push_back(thengine::LightSource(playerPos, m_currentTorchRadius, thengine::Color(255, 200, 50, 255), 1.0f));
+		activeLights.push_back(thengine::LightSource(playerPos, m_currentTorchRadius, thengine::Color(255, 250, 240, 255), 1.0f));
 
 		// Include static torches
 		activeLights.insert(activeLights.end(), m_lights.begin(), m_lights.end());
@@ -323,7 +323,7 @@ void EmberbornGame::onRender(float deltaTime) {
 	if (m_lightmapTexture) {
 		getRenderer().setRenderTarget(m_lightmapTexture);
 		// Clear lightmap to our ambient darkness color
-		getRenderer().clear(15, 15, 20, 255);
+		getRenderer().clear(25, 25, 30, 255);
 
 		// Calculate camera view transformation matrix
 		thengine::Matrix4 cameraTransform = m_camera.getTransform(
