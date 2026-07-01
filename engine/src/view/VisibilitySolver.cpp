@@ -59,6 +59,7 @@ VisibilityPolygon VisibilitySolver::calculateVisibility(
     struct TempVertex {
         Vector2 position;
         float angle;
+        float originalDist;
     };
     std::vector<TempVertex> tempVertices;
     tempVertices.reserve(uniqueAngles.size());
@@ -86,7 +87,11 @@ VisibilityPolygon VisibilitySolver::calculateVisibility(
         }
 
         Vector2 hit = center + direction * closest_t;
-        tempVertices.push_back({ hit, angle });
+        Vector2 extendedHit = hit;
+        if (closest_t < radius - 0.1f) {
+            extendedHit = hit + direction * 24.0f;
+        }
+        tempVertices.push_back({ extendedHit, angle, closest_t });
     }
 
     // Sort initial tempVertices by angle
@@ -143,10 +148,14 @@ VisibilityPolygon VisibilitySolver::calculateVisibility(
                 }
 
                 Vector2 midPos = center + direction * closest_t;
+                Vector2 extendedMidPos = midPos;
+                if (closest_t < radius - 0.1f) {
+                    extendedMidPos = midPos + direction * 24.0f;
+                }
                 float normMidAngle = std::fmod(midAngle, 2.0f * M_PI);
                 if (normMidAngle < 0.0f) normMidAngle += 2.0f * M_PI;
 
-                nextVertices.push_back({ midPos, normMidAngle });
+                nextVertices.push_back({ extendedMidPos, normMidAngle, closest_t });
                 subdivided = true;
             }
         }
@@ -154,26 +163,19 @@ VisibilityPolygon VisibilitySolver::calculateVisibility(
         depth++;
     }
 
-    // Collect final sorted vertices
-    std::vector<Vector2> finalVertices;
-    finalVertices.reserve(tempVertices.size());
-    for (const auto& tv : tempVertices) {
-        finalVertices.push_back(tv.position);
-    }
-
     // Sort strictly clockwise/counter-clockwise relative to center
-    std::sort(finalVertices.begin(), finalVertices.end(), [&center](const Vector2& a, const Vector2& b) {
-        return std::atan2(a.y - center.y, a.x - center.x) < std::atan2(b.y - center.y, b.x - center.x);
+    std::sort(tempVertices.begin(), tempVertices.end(), [&center](const TempVertex& a, const TempVertex& b) {
+        return std::atan2(a.position.y - center.y, a.position.x - center.x) < std::atan2(b.position.y - center.y, b.position.x - center.x);
     });
 
-    // Precalculate attenuation values for high-performance rendering
+    // Collect final sorted vertices and precalculate attenuation based on original unextended distance
+    std::vector<Vector2> finalVertices;
     std::vector<float> finalAttenuations;
-    finalAttenuations.reserve(finalVertices.size());
-    for (const auto& v : finalVertices) {
-        float dx = v.x - center.x;
-        float dy = v.y - center.y;
-        float d = std::sqrt(dx * dx + dy * dy);
-        float ratio = d / radius;
+    finalVertices.reserve(tempVertices.size());
+    finalAttenuations.reserve(tempVertices.size());
+    for (const auto& tv : tempVertices) {
+        finalVertices.push_back(tv.position);
+        float ratio = tv.originalDist / radius;
         if (ratio > 1.0f) ratio = 1.0f;
         float att = 1.0f - ratio;
         finalAttenuations.push_back(att * att);
