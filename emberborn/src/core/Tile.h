@@ -11,6 +11,7 @@ struct Tile {
   };
 
   TileType type = TileType::Void;
+  bool isExplored = false;
 
   // Helper functions
   bool isWalkable() const {

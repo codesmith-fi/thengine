@@ -20,6 +20,7 @@ public:
 
   const Tile& getTile(int x, int y) const;
   void setTile(int x, int y, Tile::TileType type);
+  void setExplored(int x, int y, bool explored);
 
   // Implement IObstacleProvider
   std::vector<thengine::LineSegment> getObstacleEdges(const thengine::Vector2& center, float radius) const override;

@@ -223,6 +223,31 @@ bool EmberbornGame::onUpdate(float deltaTime) {
 			static_cast<float>(m_player->getY()) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f
 		);
 
+		// Resolve Fog of War for visible tiles in player's light radius
+		int radiusTiles = static_cast<int>(std::ceil(m_currentTorchRadius / emberborn::TILE_SIZE));
+		int px = m_player->getX();
+		int py = m_player->getY();
+
+		int minX_fog = std::max(0, px - radiusTiles);
+		int maxX_fog = std::min(m_tileMap.getWidth() - 1, px + radiusTiles);
+		int minY_fog = std::max(0, py - radiusTiles);
+		int maxY_fog = std::min(m_tileMap.getHeight() - 1, py + radiusTiles);
+
+		for (int ty = minY_fog; ty <= maxY_fog; ++ty) {
+			for (int tx = minX_fog; tx <= maxX_fog; ++tx) {
+				thengine::Vector2 tilePos(
+					static_cast<float>(tx) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f,
+					static_cast<float>(ty) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f
+				);
+				float d = (tilePos - playerPos).length();
+				if (d <= m_currentTorchRadius) {
+					if (hasLineOfSight(px, py, tx, ty)) {
+						m_tileMap.setExplored(tx, ty, true);
+					}
+				}
+			}
+		}
+
 		// Get camera properties for viewport culling
 		thengine::Vector2 camCenter = m_camera.getPosition();
 		float camWidth = static_cast<float>(emberborn::WINDOW_WIDTH) / m_camera.getZoom();
@@ -322,14 +347,57 @@ void EmberbornGame::onRender(float deltaTime) {
 	// Step 1: Draw Lightmap Target
 	if (m_lightmapTexture) {
 		getRenderer().setRenderTarget(m_lightmapTexture);
-		// Clear lightmap to our ambient darkness color
-		getRenderer().clear(25, 25, 30, 255);
+		// Clear lightmap to absolute darkness (Fog of War base)
+		getRenderer().clear(0, 0, 0, 255);
 
 		// Calculate camera view transformation matrix
 		thengine::Matrix4 cameraTransform = m_camera.getTransform(
 			static_cast<float>(emberborn::WINDOW_WIDTH),
 			static_cast<float>(emberborn::WINDOW_HEIGHT)
 		);
+
+		// Draw explored tiles as dim ambient memory shapes in the lightmap
+		float camZoom = m_camera.getZoom();
+		thengine::Vector2 camPos = m_camera.getPosition();
+		float halfW = (emberborn::WINDOW_WIDTH * 0.5f) / camZoom;
+		float halfH = (emberborn::WINDOW_HEIGHT * 0.5f) / camZoom;
+
+		int minX = static_cast<int>(std::floor((camPos.x - halfW) / emberborn::TILE_SIZE));
+		int maxX = static_cast<int>(std::floor((camPos.x + halfW) / emberborn::TILE_SIZE));
+		int minY = static_cast<int>(std::floor((camPos.y - halfH) / emberborn::TILE_SIZE));
+		int maxY = static_cast<int>(std::floor((camPos.y + halfH) / emberborn::TILE_SIZE));
+
+		minX = std::max(0, minX);
+		maxX = std::min(m_tileMap.getWidth() - 1, maxX);
+		minY = std::max(0, minY);
+		maxY = std::min(m_tileMap.getHeight() - 1, maxY);
+
+		m_spriteBatch->begin(m_basicEffect, cameraTransform);
+		for (int y = minY; y <= maxY; ++y) {
+			for (int x = minX; x <= maxX; ++x) {
+				const auto& tile = m_tileMap.getTile(x, y);
+				if (tile.isExplored) {
+					thengine::Vector2 pos(
+						static_cast<float>(x) * emberborn::TILE_SIZE,
+						static_cast<float>(y) * emberborn::TILE_SIZE
+					);
+					thengine::Vector2 size(
+						static_cast<float>(emberborn::TILE_SIZE),
+						static_cast<float>(emberborn::TILE_SIZE)
+					);
+					m_spriteBatch->draw(
+						m_pixelTex,
+						pos,
+						size,
+						0.0f,
+						{0.0f, 0.0f},
+						thengine::Color(25, 25, 30, 255),
+						0.1f
+					);
+				}
+			}
+		}
+		m_spriteBatch->end();
 
 		// Draw visible dynamic/static light sources directly into the lightmap target texture
 		for (size_t idx = 0; idx < m_visibleLights.size(); ++idx) {

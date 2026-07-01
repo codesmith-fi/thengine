@@ -28,6 +28,12 @@ void TileMap::setTile(int x, int y, Tile::TileType type) {
   }
 }
 
+void TileMap::setExplored(int x, int y, bool explored) {
+  if (inBounds(x, y)) {
+    m_tiles[y * m_width + x].isExplored = explored;
+  }
+}
+
 std::vector<thengine::LineSegment> TileMap::getObstacleEdges(const thengine::Vector2& center, float radius) const {
   std::vector<thengine::LineSegment> edges;
 
