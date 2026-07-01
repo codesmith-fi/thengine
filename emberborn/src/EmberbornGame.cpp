@@ -257,7 +257,7 @@ bool EmberbornGame::onUpdate(float deltaTime) {
 				if (light.isStatic && light.hasCachedPolygon) {
 					m_visibleLights.push_back({ light, light.cachedPolygon });
 				} else {
-					thengine::VisibilityPolygon poly = thengine::VisibilitySolver::calculateVisibility(light.position, light.radius, m_tileMap);
+					thengine::VisibilityPolygon poly = thengine::VisibilitySolver::calculateVisibility(light.position, light.currentRadius, m_tileMap);
 					m_visibleLights.push_back({ light, std::move(poly) });
 					solverCalls++;
 				}
@@ -355,7 +355,12 @@ void EmberbornGame::onRender(float deltaTime) {
 			float cR = static_cast<float>(light.color.r) / 255.0f;
 			float cG = static_cast<float>(light.color.g) / 255.0f;
 			float cB = static_cast<float>(light.color.b) / 255.0f;
-			float cA_center = (150.0f / 255.0f) * flicker * light.intensity;
+			
+			// Center has attenuation = 1.0f
+			float cR_center = cR * flicker * light.intensity;
+			float cG_center = cG * flicker * light.intensity;
+			float cB_center = cB * flicker * light.intensity;
+			float cA_center = 1.0f * flicker * light.intensity;
 
 			const auto& attenuations = vl.polygon.attenuations;
 
@@ -373,12 +378,19 @@ void EmberbornGame::onRender(float deltaTime) {
 					att2 = attenuations[(i + 1) % count];
 				}
 
-				float cA_curr = (150.0f / 255.0f) * att1 * flicker * light.intensity;
-				float cA_nxt = (150.0f / 255.0f) * att2 * flicker * light.intensity;
+				float cR_curr = cR * att1 * flicker * light.intensity;
+				float cG_curr = cG * att1 * flicker * light.intensity;
+				float cB_curr = cB * att1 * flicker * light.intensity;
+				float cA_curr = att1 * flicker * light.intensity;
 
-				thengine::Vertex vCenter = { light.position.x, light.position.y, 0.0f, 0.0f, cR, cG, cB, cA_center };
-				thengine::Vertex vCurr = { vCurrent.x, vCurrent.y, 0.0f, 0.0f, cR, cG, cB, cA_curr };
-				thengine::Vertex vNxt = { vNext.x, vNext.y, 0.0f, 0.0f, cR, cG, cB, cA_nxt };
+				float cR_nxt = cR * att2 * flicker * light.intensity;
+				float cG_nxt = cG * att2 * flicker * light.intensity;
+				float cB_nxt = cB * att2 * flicker * light.intensity;
+				float cA_nxt = att2 * flicker * light.intensity;
+
+				thengine::Vertex vCenter = { light.position.x, light.position.y, 0.0f, 0.0f, cR_center, cG_center, cB_center, cA_center };
+				thengine::Vertex vCurr = { vCurrent.x, vCurrent.y, 0.0f, 0.0f, cR_curr, cG_curr, cB_curr, cA_curr };
+				thengine::Vertex vNxt = { vNext.x, vNext.y, 0.0f, 0.0f, cR_nxt, cG_nxt, cB_nxt, cA_nxt };
 
 				lightVertices.push_back(vCenter);
 				lightVertices.push_back(vCurr);
@@ -455,17 +467,17 @@ void EmberbornGame::onRender(float deltaTime) {
 			const auto& light = vl.light;
 
 			float d = (entityPos - light.position).length();
-			if (d < light.radius) {
+			if (d < light.currentRadius) {
 				int lx = static_cast<int>(light.position.x / emberborn::TILE_SIZE);
 				int ly = static_cast<int>(light.position.y / emberborn::TILE_SIZE);
 				int ex = entity->getX();
 				int ey = entity->getY();
 
 				if (hasLineOfSight(lx, ly, ex, ey)) {
-					float ratio = d / light.radius;
-					float att = (1.0f - ratio) / 0.85f;
-					att = std::max(0.0f, std::min(1.0f, att));
-					att = att * att * att;
+					float ratio = d / light.currentRadius;
+					if (ratio > 1.0f) ratio = 1.0f;
+					float att = 1.0f - ratio;
+					att = att * att;
 
 					float flicker = 1.0f;
 					if (idx == 0) {
@@ -545,7 +557,7 @@ bool EmberbornGame::isLightInViewport(
 	float dy = light.position.y - closestY;
 	float distSq = dx * dx + dy * dy;
 
-	return distSq < (light.radius * light.radius);
+	return distSq < (light.currentRadius * light.currentRadius);
 }
 
 void EmberbornGame::drawLine(

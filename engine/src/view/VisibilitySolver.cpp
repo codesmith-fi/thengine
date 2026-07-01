@@ -174,9 +174,9 @@ VisibilityPolygon VisibilitySolver::calculateVisibility(
         float dy = v.y - center.y;
         float d = std::sqrt(dx * dx + dy * dy);
         float ratio = d / radius;
-        float att = (1.0f - ratio) / 0.85f;
-        att = std::max(0.0f, std::min(1.0f, att));
-        finalAttenuations.push_back(att * att * att);
+        if (ratio > 1.0f) ratio = 1.0f;
+        float att = 1.0f - ratio;
+        finalAttenuations.push_back(att * att);
     }
 
     VisibilityPolygon polygon;
