@@ -5,10 +5,10 @@
 
 namespace thengine {
 
-SpriteEffect::SpriteEffect(Renderer& renderer, std::shared_ptr<Shader> vertexShader, std::shared_ptr<Shader> fragmentShader)
+SpriteEffect::SpriteEffect(Renderer& renderer, std::shared_ptr<Shader> vertexShader, std::shared_ptr<Shader> fragmentShader, BlendMode blendMode)
     : m_renderer(renderer), m_vertexShader(vertexShader), m_fragmentShader(fragmentShader) {
     if (m_vertexShader && m_fragmentShader) {
-        m_pipeline = m_renderer.createGraphicsPipeline(m_vertexShader->m_shader, m_fragmentShader->m_shader);
+        m_pipeline = m_renderer.createGraphicsPipeline(m_vertexShader->m_shader, m_fragmentShader->m_shader, blendMode);
     }
 }
 

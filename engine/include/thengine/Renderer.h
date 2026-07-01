@@ -1,7 +1,6 @@
 #pragma once
 
-#include "thengine/graphics/SpriteEffect.h"
-#include "thengine/graphics/BasicEffect.h"
+#include "thengine/graphics/LightTypes.h"
 #include "thengine/graphics/Vertex.h"
 #include "thengine/primitives/Color.h"
 #include "thengine/primitives/Vector2.h"
@@ -23,10 +22,10 @@ struct SDL_GPUBuffer;
 struct SDL_GPUSampler;
 struct SDL_GPUShader;
 struct SDL_GPUTransferBuffer;
-
 namespace thengine {
 
 class Texture;
+class SpriteEffect;
 
 class Renderer {
   friend class Game;
@@ -63,7 +62,10 @@ public:
   void registerEffect(int id, std::shared_ptr<SpriteEffect> effect);
 
   // Helper for compiling a graphics pipeline compatible with standard 2D sprite rendering
-  SDL_GPUGraphicsPipeline* createGraphicsPipeline(SDL_GPUShader* vertShader, SDL_GPUShader* fragShader);
+  SDL_GPUGraphicsPipeline* createGraphicsPipeline(SDL_GPUShader* vertShader, SDL_GPUShader* fragShader, BlendMode blendMode = BlendMode::Alpha);
+
+  // Set active render target texture. Pass nullptr to restore screen target.
+  void setRenderTarget(std::shared_ptr<Texture> texture);
 
 private:
   explicit Renderer(SDL_Window *window);
@@ -75,6 +77,7 @@ private:
 
   SDL_GPUCommandBuffer *m_cmdBuf = nullptr;
   SDL_GPUTexture *m_swapchainTexture = nullptr;
+  SDL_GPUTexture *m_currentRenderTarget = nullptr;
   SDL_GPURenderPass *m_renderPass = nullptr;
 
   SDL_GPUGraphicsPipeline *m_spritePipeline = nullptr;

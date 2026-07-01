@@ -116,7 +116,7 @@ Renderer::~Renderer() {
   }
 }
 
-SDL_GPUGraphicsPipeline* Renderer::createGraphicsPipeline(SDL_GPUShader* vertShader, SDL_GPUShader* fragShader) {
+SDL_GPUGraphicsPipeline* Renderer::createGraphicsPipeline(SDL_GPUShader* vertShader, SDL_GPUShader* fragShader, BlendMode blendMode) {
   if (!m_device || !vertShader || !fragShader)
     return nullptr;
 
@@ -165,15 +165,28 @@ SDL_GPUGraphicsPipeline* Renderer::createGraphicsPipeline(SDL_GPUShader* vertSha
   SDL_GPUColorTargetDescription colorTargetDesc = {};
   colorTargetDesc.format = SDL_GetGPUSwapchainTextureFormat(m_device, m_window);
   colorTargetDesc.blend_state.enable_blend = true;
-  colorTargetDesc.blend_state.src_color_blendfactor =
-      SDL_GPU_BLENDFACTOR_SRC_ALPHA;
-  colorTargetDesc.blend_state.dst_color_blendfactor =
-      SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
-  colorTargetDesc.blend_state.color_blend_op = SDL_GPU_BLENDOP_ADD;
-  colorTargetDesc.blend_state.src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE;
-  colorTargetDesc.blend_state.dst_alpha_blendfactor =
-      SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
-  colorTargetDesc.blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD;
+  if (blendMode == BlendMode::Alpha) {
+    colorTargetDesc.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    colorTargetDesc.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+    colorTargetDesc.blend_state.color_blend_op = SDL_GPU_BLENDOP_ADD;
+    colorTargetDesc.blend_state.src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE;
+    colorTargetDesc.blend_state.dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+    colorTargetDesc.blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD;
+  } else if (blendMode == BlendMode::Additive) {
+    colorTargetDesc.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    colorTargetDesc.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE;
+    colorTargetDesc.blend_state.color_blend_op = SDL_GPU_BLENDOP_ADD;
+    colorTargetDesc.blend_state.src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE;
+    colorTargetDesc.blend_state.dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE;
+    colorTargetDesc.blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD;
+  } else if (blendMode == BlendMode::Multiplicative) {
+    colorTargetDesc.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_DST_COLOR;
+    colorTargetDesc.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ZERO;
+    colorTargetDesc.blend_state.color_blend_op = SDL_GPU_BLENDOP_ADD;
+    colorTargetDesc.blend_state.src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_DST_ALPHA;
+    colorTargetDesc.blend_state.dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ZERO;
+    colorTargetDesc.blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD;
+  }
 
   pipelineInfo.target_info.color_target_descriptions = &colorTargetDesc;
   pipelineInfo.target_info.num_color_targets = 1;
@@ -350,7 +363,7 @@ void Renderer::renderCurrentBatches() {
 
   // 4. Start render pass. If this is the first draw in this frame, use CLEAR. Otherwise LOAD.
   SDL_GPUColorTargetInfo colorTarget = {};
-  colorTarget.texture = m_swapchainTexture;
+  colorTarget.texture = m_currentRenderTarget ? m_currentRenderTarget : m_swapchainTexture;
   colorTarget.clear_color = {m_clearColor[0], m_clearColor[1], m_clearColor[2], m_clearColor[3]};
   colorTarget.load_op = m_hasClearedThisFrame ? SDL_GPU_LOADOP_LOAD : SDL_GPU_LOADOP_CLEAR;
   colorTarget.store_op = SDL_GPU_STOREOP_STORE;
@@ -433,6 +446,18 @@ void Renderer::renderCurrentBatches() {
   m_vertexOffset += m_frameVertices.size();
   m_frameVertices.clear();
   m_frameBatches.clear();
+}
+
+void Renderer::setRenderTarget(std::shared_ptr<Texture> texture) {
+  // Flush any accumulated batches to the current render target first
+  renderCurrentBatches();
+  
+  if (texture) {
+    m_currentRenderTarget = texture->m_texture;
+  } else {
+    m_currentRenderTarget = nullptr;
+  }
+  m_hasClearedThisFrame = false; // Reset clear flag for the new target
 }
 
 void Renderer::clear(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {

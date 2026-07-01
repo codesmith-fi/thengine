@@ -51,6 +51,8 @@ void EmberbornGame::onLoadContent() {
 	auto vert = m_content->load<::thengine::Shader>("assets/shaders/basic.vert");
 	auto frag = m_content->load<::thengine::Shader>("assets/shaders/basic.frag");
 	m_basicEffect = std::make_shared<::thengine::BasicEffect>(getRenderer(), vert, frag);
+	m_multiplyEffect = std::make_shared<::thengine::SpriteEffect>(getRenderer(), vert, frag, thengine::BlendMode::Multiplicative);
+	m_lightmapTexture = thengine::Texture::createRenderTarget(getRenderer(), emberborn::WINDOW_WIDTH, emberborn::WINDOW_HEIGHT);
 
 	m_font = m_content->loadFont("assets/fonts/DejaVuSansMono.ttf", 36.0f);
 
@@ -317,13 +319,80 @@ bool EmberbornGame::onUpdate(float deltaTime) {
 }
 
 void EmberbornGame::onRender(float deltaTime) {
-	// Clear the screen to a deep, dark atmospheric black/red color
-	getRenderer().clear(5, 5, 8, 255);
+	// Step 1: Draw Lightmap Target
+	if (m_lightmapTexture) {
+		getRenderer().setRenderTarget(m_lightmapTexture);
+		// Clear lightmap to our ambient darkness color
+		getRenderer().clear(15, 15, 20, 255);
 
-	// Set ambient light to very dark for our Light on Dark Ambient model
-	m_basicEffect->setAmbientColor(thengine::Color(35, 30, 35, 255));
-	m_basicEffect->setAmbientIntensity(1.0f);
-	m_basicEffect->clearLights();
+		// Calculate camera view transformation matrix
+		thengine::Matrix4 cameraTransform = m_camera.getTransform(
+			static_cast<float>(emberborn::WINDOW_WIDTH),
+			static_cast<float>(emberborn::WINDOW_HEIGHT)
+		);
+
+		// Draw visible dynamic/static light sources directly into the lightmap target texture
+		for (size_t idx = 0; idx < m_visibleLights.size(); ++idx) {
+			const auto& vl = m_visibleLights[idx];
+			const auto& light = vl.light;
+			const auto& vertices = vl.polygon.vertices;
+			size_t count = vertices.size();
+			if (count == 0) continue;
+
+			std::vector<thengine::Vertex> lightVertices;
+			lightVertices.reserve(count * 3);
+
+			// Apply player torch flicker if index is 0
+			float flicker = 1.0f;
+			if (idx == 0) {
+				float ratio = m_currentTorchRadius / 400.0f;
+				flicker = ratio * ratio;
+				if (flicker > 1.5f) {
+					flicker = 1.5f;
+				}
+			}
+
+			float cR = static_cast<float>(light.color.r) / 255.0f;
+			float cG = static_cast<float>(light.color.g) / 255.0f;
+			float cB = static_cast<float>(light.color.b) / 255.0f;
+			float cA_center = (150.0f / 255.0f) * flicker * light.intensity;
+
+			const auto& attenuations = vl.polygon.attenuations;
+
+			for (size_t i = 0; i < count; ++i) {
+				const auto& vCurrent = vertices[i];
+				const auto& vNext = vertices[(i + 1) % count];
+
+				// Read pre-calculated attenuation values
+				float att1 = 0.0f;
+				if (i < attenuations.size()) {
+					att1 = attenuations[i];
+				}
+				float att2 = 0.0f;
+				if (((i + 1) % count) < attenuations.size()) {
+					att2 = attenuations[(i + 1) % count];
+				}
+
+				float cA_curr = (150.0f / 255.0f) * att1 * flicker * light.intensity;
+				float cA_nxt = (150.0f / 255.0f) * att2 * flicker * light.intensity;
+
+				thengine::Vertex vCenter = { light.position.x, light.position.y, 0.0f, 0.0f, cR, cG, cB, cA_center };
+				thengine::Vertex vCurr = { vCurrent.x, vCurrent.y, 0.0f, 0.0f, cR, cG, cB, cA_curr };
+				thengine::Vertex vNxt = { vNext.x, vNext.y, 0.0f, 0.0f, cR, cG, cB, cA_nxt };
+
+				lightVertices.push_back(vCenter);
+				lightVertices.push_back(vCurr);
+				lightVertices.push_back(vNxt);
+			}
+
+			getRenderer().drawBatched(m_pixelTex, lightVertices.data(), lightVertices.size(), m_basicEffect, cameraTransform);
+		}
+	}
+
+	// Step 2: Draw Environment & Compose
+	getRenderer().setRenderTarget(nullptr);
+	// Clear the main screen target
+	getRenderer().clear(5, 5, 8, 255);
 
 	// Calculate camera view transformation matrix
 	thengine::Matrix4 cameraTransform = m_camera.getTransform(
@@ -331,7 +400,11 @@ void EmberbornGame::onRender(float deltaTime) {
 		static_cast<float>(emberborn::WINDOW_HEIGHT)
 	);
 
-	// Render the map inside the camera view bounds (frustum culled) - Layer 1: Environment
+	// 2a. Draw raw TileMap (Layer 1) at full brightness (using white ambient color)
+	m_basicEffect->setAmbientColor(thengine::Color(255, 255, 255, 255));
+	m_basicEffect->setAmbientIntensity(1.0f);
+	m_basicEffect->clearLights();
+
 	m_spriteBatch->begin(m_basicEffect, cameraTransform);
 	m_tileRenderer.render(
 		*m_spriteBatch,
@@ -343,68 +416,22 @@ void EmberbornGame::onRender(float deltaTime) {
 	);
 	m_spriteBatch->end();
 
-	// Restore ambient color to white for lights and entities rendering
-	m_basicEffect->setAmbientColor(thengine::Color(255, 255, 255, 255));
-	m_basicEffect->setAmbientIntensity(1.0f);
-
-	// Draw visible dynamic/static light sources - Layer 2: Lightmaps & Shadows
-	for (size_t idx = 0; idx < m_visibleLights.size(); ++idx) {
-		const auto& vl = m_visibleLights[idx];
-		const auto& light = vl.light;
-		const auto& vertices = vl.polygon.vertices;
-		size_t count = vertices.size();
-		if (count == 0) continue;
-
-		std::vector<thengine::Vertex> lightVertices;
-		lightVertices.reserve(count * 3);
-
-		// Apply player torch flicker if index is 0
-		float flicker = 1.0f;
-		if (idx == 0) {
-			float ratio = m_currentTorchRadius / 400.0f;
-			flicker = ratio * ratio;
-			if (flicker > 1.5f) {
-				flicker = 1.5f;
-			}
-		}
-
-		float cR = static_cast<float>(light.color.r) / 255.0f;
-		float cG = static_cast<float>(light.color.g) / 255.0f;
-		float cB = static_cast<float>(light.color.b) / 255.0f;
-		float cA_center = (150.0f / 255.0f) * flicker * light.intensity;
-
-		const auto& attenuations = vl.polygon.attenuations;
-
-		for (size_t i = 0; i < count; ++i) {
-			const auto& vCurrent = vertices[i];
-			const auto& vNext = vertices[(i + 1) % count];
-
-			// Read pre-calculated attenuation values
-			float att1 = 0.0f;
-			if (i < attenuations.size()) {
-				att1 = attenuations[i];
-			}
-			float att2 = 0.0f;
-			if (((i + 1) % count) < attenuations.size()) {
-				att2 = attenuations[(i + 1) % count];
-			}
-
-			float cA_curr = (150.0f / 255.0f) * att1 * flicker * light.intensity;
-			float cA_nxt = (150.0f / 255.0f) * att2 * flicker * light.intensity;
-
-			thengine::Vertex vCenter = { light.position.x, light.position.y, 0.0f, 0.0f, cR, cG, cB, cA_center };
-			thengine::Vertex vCurr = { vCurrent.x, vCurrent.y, 0.0f, 0.0f, cR, cG, cB, cA_curr };
-			thengine::Vertex vNxt = { vNext.x, vNext.y, 0.0f, 0.0f, cR, cG, cB, cA_nxt };
-
-			lightVertices.push_back(vCenter);
-			lightVertices.push_back(vCurr);
-			lightVertices.push_back(vNxt);
-		}
-
-		getRenderer().drawBatched(m_pixelTex, lightVertices.data(), lightVertices.size(), m_basicEffect, cameraTransform);
+	// 2b. Draw our compiled Lightmap texture over the screen with Multiplicative Blending (Layer 2)
+	if (m_lightmapTexture && m_multiplyEffect) {
+		m_spriteBatch->begin(m_multiplyEffect, thengine::Matrix4::identity());
+		m_spriteBatch->draw(
+			m_lightmapTexture,
+			{0.0f, 0.0f},
+			{1.0f, 1.0f},
+			0.0f,
+			{0.0f, 0.0f},
+			thengine::Color(255, 255, 255, 255),
+			0.2f
+		);
+		m_spriteBatch->end();
 	}
 
-	// Calculate CPU-side entity tints based on ambient and visible light line-of-sight
+	// Step 3: Draw Entities (Layer 3) on top of the composed scene
 	std::vector<thengine::Color> entityTints;
 	entityTints.reserve(m_entities.size());
 
@@ -460,7 +487,10 @@ void EmberbornGame::onRender(float deltaTime) {
 		entityTints.push_back(thengine::Color(r, g, b, 255));
 	}
 
-	// Render dynamic entities on top of the fully lit/darkened world (Layer 3: Entities & Foreground)
+	m_basicEffect->setAmbientColor(thengine::Color(255, 255, 255, 255));
+	m_basicEffect->setAmbientIntensity(1.0f);
+	m_basicEffect->clearLights();
+
 	m_spriteBatch->begin(m_basicEffect, cameraTransform);
 	m_entityRenderer.render(
 		*m_spriteBatch,

@@ -1,17 +1,11 @@
 #pragma once
 
 #include "thengine/graphics/SpriteEffect.h"
+#include "thengine/graphics/LightTypes.h"
 #include "thengine/primitives/Color.h"
 #include <vector>
 
 namespace thengine {
-
-struct PointLight {
-    float position[2];
-    float radius;
-    float intensity;
-    float color[4];
-};
 
 class BasicEffect : public SpriteEffect {
 public:

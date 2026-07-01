@@ -57,6 +57,8 @@ private:
 
 	thengine::VisibilityPolygon m_playerVisibility;
 	std::shared_ptr<thengine::Texture> m_pixelTex;
+	std::shared_ptr<thengine::Texture> m_lightmapTexture;
+	std::shared_ptr<thengine::SpriteEffect> m_multiplyEffect;
 
 	float m_torchTime = 0.0f;
 	float m_currentTorchRadius = 400.0f;
