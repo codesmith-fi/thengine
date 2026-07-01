@@ -496,7 +496,18 @@ void EmberbornGame::onRender(float deltaTime) {
 	);
 	m_spriteBatch->end();
 
-	// 2b. Draw our compiled Lightmap texture over the screen with Multiplicative Blending (Layer 2)
+	// 2b. Draw Entities (Layer 3) at full brightness, so they get masked by the Lightmap next
+	std::vector<thengine::Color> entityTints(m_entities.size(), thengine::Color(255, 255, 255, 255));
+	m_spriteBatch->begin(m_basicEffect, cameraTransform);
+	m_entityRenderer.render(
+		*m_spriteBatch,
+		m_entities,
+		entityTints,
+		emberborn::TILE_SIZE
+	);
+	m_spriteBatch->end();
+
+	// 2c. Draw our compiled Lightmap texture over the screen with Multiplicative Blending (Layer 2)
 	if (m_lightmapTexture && m_multiplyEffect) {
 		m_spriteBatch->begin(m_multiplyEffect, thengine::Matrix4::identity());
 		m_spriteBatch->draw(
@@ -510,75 +521,6 @@ void EmberbornGame::onRender(float deltaTime) {
 		);
 		m_spriteBatch->end();
 	}
-
-	// Step 3: Draw Entities (Layer 3) on top of the composed scene
-	std::vector<thengine::Color> entityTints;
-	entityTints.reserve(m_entities.size());
-
-	for (const auto& entity : m_entities) {
-		if (!entity) {
-			entityTints.push_back(thengine::Color(35, 30, 35, 255));
-			continue;
-		}
-
-		thengine::Vector2 entityPos(
-			static_cast<float>(entity->getX()) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f,
-			static_cast<float>(entity->getY()) * emberborn::TILE_SIZE + emberborn::TILE_SIZE * 0.5f
-		);
-
-		float accumR = 35.0f;
-		float accumG = 30.0f;
-		float accumB = 35.0f;
-
-		for (size_t idx = 0; idx < m_visibleLights.size(); ++idx) {
-			const auto& vl = m_visibleLights[idx];
-			const auto& light = vl.light;
-
-			float d = (entityPos - light.position).length();
-			if (d < light.currentRadius) {
-				int lx = static_cast<int>(light.position.x / emberborn::TILE_SIZE);
-				int ly = static_cast<int>(light.position.y / emberborn::TILE_SIZE);
-				int ex = entity->getX();
-				int ey = entity->getY();
-
-				if (hasLineOfSight(lx, ly, ex, ey)) {
-					float ratio = d / light.currentRadius;
-					if (ratio > 1.0f) ratio = 1.0f;
-					float att = 1.0f - ratio;
-					att = att * att;
-
-					float flicker = 1.0f;
-					if (idx == 0) {
-						float r = m_currentTorchRadius / 400.0f;
-						flicker = r * r;
-						if (flicker > 1.5f) flicker = 1.5f;
-					}
-
-					accumR += (static_cast<float>(light.color.r) - 35.0f) * att * flicker * light.intensity;
-					accumG += (static_cast<float>(light.color.g) - 30.0f) * att * flicker * light.intensity;
-					accumB += (static_cast<float>(light.color.b) - 35.0f) * att * flicker * light.intensity;
-				}
-			}
-		}
-
-		uint8_t r = static_cast<uint8_t>(std::clamp(accumR, 0.0f, 255.0f));
-		uint8_t g = static_cast<uint8_t>(std::clamp(accumG, 0.0f, 255.0f));
-		uint8_t b = static_cast<uint8_t>(std::clamp(accumB, 0.0f, 255.0f));
-		entityTints.push_back(thengine::Color(r, g, b, 255));
-	}
-
-	m_basicEffect->setAmbientColor(thengine::Color(255, 255, 255, 255));
-	m_basicEffect->setAmbientIntensity(1.0f);
-	m_basicEffect->clearLights();
-
-	m_spriteBatch->begin(m_basicEffect, cameraTransform);
-	m_entityRenderer.render(
-		*m_spriteBatch,
-		m_entities,
-		entityTints,
-		emberborn::TILE_SIZE
-	);
-	m_spriteBatch->end();
 
 	// Draw HUD overlay in screen space
 	if (m_font) {
