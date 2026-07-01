@@ -119,19 +119,40 @@ void EmberbornGame::onLoadContent() {
 		LOG_ERROR() << "Failed to find a valid spawn tile for the player.";
 	}
 
-	// Find a different floor tile for the monster
+	// Find a floor tile in the same room (near the player) for the monster
 	int monsterX = -1, monsterY = -1;
-	for (int y = m_tileMap.getHeight() - 1; y >= 0; --y) {
-		for (int x = m_tileMap.getWidth() - 1; x >= 0; --x) {
-			if (m_tileMap.getTile(x, y).type == emberborn::Tile::TileType::Floor) {
-				if (x != startX || y != startY) {
-					monsterX = x;
-					monsterY = y;
-					break;
+	for (int dy = -6; dy <= 6; ++dy) {
+		for (int dx = -6; dx <= 6; ++dx) {
+			if (dx == 0 && dy == 0) continue;
+			int tx = startX + dx;
+			int ty = startY + dy;
+			if (m_tileMap.inBounds(tx, ty)) {
+				if (m_tileMap.getTile(tx, ty).type == emberborn::Tile::TileType::Floor) {
+					// Ensure we have line-of-sight in the starting room
+					if (hasLineOfSight(startX, startY, tx, ty)) {
+						monsterX = tx;
+						monsterY = ty;
+						break;
+					}
 				}
 			}
 		}
 		if (monsterX != -1) break;
+	}
+	// Fallback to searching from bottom-right if none found nearby
+	if (monsterX == -1) {
+		for (int y = m_tileMap.getHeight() - 1; y >= 0; --y) {
+			for (int x = m_tileMap.getWidth() - 1; x >= 0; --x) {
+				if (m_tileMap.getTile(x, y).type == emberborn::Tile::TileType::Floor) {
+					if (x != startX || y != startY) {
+						monsterX = x;
+						monsterY = y;
+						break;
+					}
+				}
+			}
+			if (monsterX != -1) break;
+		}
 	}
 
 	// Load skeleton texture and register it
