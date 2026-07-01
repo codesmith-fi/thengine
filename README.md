@@ -7,8 +7,8 @@ This repository serves as a practical, highly-constrained experiment in **agenti
 > [!IMPORTANT]
 > **Project Status:** Up to this point, exactly **zero manual code edits** have been made to the core engine files. Every single line is orchestrate-designed by AI under strict architectural guidelines.
 
-**Supports Raycast lighting and shadow - first phase**
-![Real time raycast lighting](https://i.imgur.com/VsfGrBi.png)
+**Supports Raycast lighting and shadows**
+![Real time raycast lighting](https://i.imgur.com/J0CYK1A.png)
 
 **Prototype realtime Roguelike - Emberborn skeleton**
 ![Prototype Realtime Roguelike Skeleton](https://i.imgur.com/FTRYvbX.png)
